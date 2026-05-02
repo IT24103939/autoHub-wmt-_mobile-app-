@@ -146,8 +146,21 @@ export function AdminDashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
 
+        {/* Welcome Banner */}
+        <View style={[styles.welcomeBanner, { backgroundColor: colors.primary }]}>
+          <View>
+            <Text style={styles.welcomeRole}>Admin Panel</Text>
+            <Text style={styles.welcomeName}>Hi, {currentUser?.fullName?.split(" ")[0] ?? "Admin"} 👋</Text>
+          </View>
+          <View style={[styles.welcomeAvatar, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+            <MaterialCommunityIcons name="shield-account" size={30} color="white" />
+          </View>
+        </View>
+
       {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ alignItems: "center", paddingVertical: 60 }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       ) : (
         <>
           {/* Stats Grid */}
@@ -191,9 +204,9 @@ export function AdminDashboardScreen() {
             <View style={styles.actionGrid}>
               {[
                 { label: "Users", icon: "account-group", color: "#4F46E5", onPress: () => navigation.navigate("UsersTab") },
-                { label: "Garages", icon: "store-cog", color: "#10B981", onPress: () => {} },
-                { label: "Bookings", icon: "calendar-month", color: "#F59E0B", onPress: () => {} },
-                { label: "Suppliers", icon: "account-hard-hat", color: "#EC4899", onPress: () => {} }
+                { label: "Garages", icon: "store-cog", color: "#10B981", onPress: () => navigation.navigate("UsersTab", { screen: "AdminGarages" } as any) },
+                { label: "Bookings", icon: "calendar-month", color: "#F59E0B", onPress: () => navigation.navigate("UsersTab", { screen: "AdminBookings" } as any) },
+                { label: "Suppliers", icon: "account-hard-hat", color: "#EC4899", onPress: () => navigation.navigate("UsersTab", { screen: "AdminSuppliers" } as any) }
               ].map((item, idx) => (
                 <TouchableOpacity
                   key={idx}
@@ -348,6 +361,35 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  welcomeBanner: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  welcomeRole: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  welcomeName: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+  welcomeAvatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
   },
   dashboardHeader: {
     flexDirection: "row",

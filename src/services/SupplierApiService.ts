@@ -28,6 +28,17 @@ class SupplierApiService {
     }
   }
 
+  async getSupplierProfile(supplierId: string): Promise<{
+    id: string; fullName: string; email: string | null; phone: string | null;
+    role: string; joinedDate: string; totalParts: number;
+  }> {
+    try {
+      return await apiClient.get(`/spare-parts/supplier/${supplierId}/profile`);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async getMyInventory(): Promise<SparePart[]> {
     try {
       return await apiClient.get<SparePart[]>("/spare-parts/my-inventory");

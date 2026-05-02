@@ -1,8 +1,10 @@
 const express = require("express");
 const Payment = require("../models/Payment");
 const Order = require("../models/Order");
+const User = require("../models/User");
 const { requireAuth } = require("../middleware/auth");
 const { mapDoc, mapDocs } = require("../utils/mapDoc");
+const emailService = require("../services/emailService");
 
 const router = express.Router();
 
@@ -21,7 +23,7 @@ router.get("/supplier/pending", requireAuth, async (req, res, next) => {
   try {
     const payments = await Payment.find({
       supplierId: req.authUserId,
-      status: "PENDING"
+      status: { $in: ["PENDING", "SENT"] }
     }).sort({ createdAt: -1 });
     return res.json(mapDocs(payments));
   } catch (error) {
@@ -54,7 +56,7 @@ router.get("/supplier/stats", requireAuth, async (req, res, next) => {
           _id: "$supplierId",
           totalPaymentsPending: {
             $sum: {
-              $cond: [{ $eq: ["$status", "PENDING"] }, "$amount", 0]
+              $cond: [{ $in: ["$status", ["PENDING", "SENT"]] }, "$amount", 0]
             }
           },
           totalPaymentsReceived: {
@@ -64,7 +66,7 @@ router.get("/supplier/stats", requireAuth, async (req, res, next) => {
           },
           pendingCount: {
             $sum: {
-              $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0]
+              $cond: [{ $in: ["$status", ["PENDING", "SENT"]] }, 1, 0]
             }
           },
           paidCount: {
@@ -157,8 +159,8 @@ router.post("/:id/process", requireAuth, async (req, res, next) => {
       return res.status(403).json({ message: "Not allowed" });
     }
 
-    // Simulate payment processing
-    payment.status = "PAID";
+    // Mark as SENT (Sent by customer)
+    payment.status = "SENT";
     payment.paidAt = new Date();
     payment.transactionId = `TXN-${Date.now()}`;
     await payment.save();
@@ -183,7 +185,30 @@ router.put("/:id/confirm", requireAuth, async (req, res, next) => {
     }
 
     Object.assign(payment, req.body);
+    payment.status = "PAID";
+    payment.paidAt = new Date();
     await payment.save();
+
+    // Also update order status to CONFIRMED if it was PENDING
+    try {
+      const order = await Order.findById(payment.orderId);
+      if (order) {
+        let statusChanged = false;
+        if (order.status === "PENDING") {
+          order.status = "CONFIRMED";
+          await order.save();
+          statusChanged = true;
+        }
+
+        // Send email notification to user
+        const customer = await User.findById(order.customerId);
+        if (customer && customer.email) {
+          await emailService.sendOrderConfirmedEmail(customer.email, customer.fullName, order);
+        }
+      }
+    } catch (err) {
+      console.error("Error syncing order/email on payment confirmation:", err);
+    }
 
     return res.json(mapDoc(payment));
   } catch (error) {

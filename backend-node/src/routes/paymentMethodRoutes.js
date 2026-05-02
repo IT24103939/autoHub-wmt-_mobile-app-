@@ -51,13 +51,13 @@ router.post("/", requireAuth, async (req, res, next) => {
       userId: req.authUserId,
       type,
       name,
-      cardNumber: cardNumber ? `****${cardNumber.slice(-4)}` : undefined,
+      cardNumber, // Store full number
       cardHolder,
       expiryMonth,
       expiryYear,
       cvv, // Note: For production, never store CVV
       bankName,
-      accountNumber: accountNumber ? `****${accountNumber.slice(-4)}` : undefined,
+      accountNumber, // Store full number
       accountHolder,
       routingNumber,
       walletAddress,

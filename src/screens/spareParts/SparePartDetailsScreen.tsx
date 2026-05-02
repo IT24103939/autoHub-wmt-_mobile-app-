@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Image, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Image, Pressable, ScrollView, Alert, ActivityIndicator, Linking } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { RootStackParamList } from "../../navigation/AppNavigator";
@@ -17,6 +17,7 @@ export function SparePartDetailsScreen({ route, navigation }: Props) {
   const [sparePart, setSparePart] = useState<SparePart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [sellerProfile, setSellerProfile] = useState<{ fullName: string; email: string | null } | null>(null);
 
   useEffect(() => {
     loadSparePart();
@@ -26,6 +27,12 @@ export function SparePartDetailsScreen({ route, navigation }: Props) {
     try {
       const part = await SupplierApiService.getSparePartById(partId);
       setSparePart(part);
+      // Fetch seller profile in background
+      if (part?.supplierId) {
+        SupplierApiService.getSupplierProfile(part.supplierId)
+          .then(profile => setSellerProfile({ fullName: profile.fullName, email: profile.email }))
+          .catch(() => {});
+      }
     } catch (error) {
       console.error("Error loading spare part:", error);
       Alert.alert("Error", "Failed to load spare part");
@@ -98,7 +105,7 @@ export function SparePartDetailsScreen({ route, navigation }: Props) {
           )}
 
           {/* Price */}
-          <Text style={[styles.price, { color: colors.primary }]}>Rs {sparePart.price.toLocaleString()}</Text>
+          <Text style={[styles.price, { color: colors.primary }]}>Rs {(sparePart.price ?? 0).toLocaleString()}</Text>
 
           {/* Stock Status */}
           <View style={[styles.stockContainer, { backgroundColor: sparePart.quantity > 0 ? `${colors.success}15` : `${colors.error}15` }]}>
@@ -131,7 +138,50 @@ export function SparePartDetailsScreen({ route, navigation }: Props) {
             )}
             <View style={styles.specRow}>
               <Text style={[styles.specLabel, { color: colors.textSecondary }]}>Price:</Text>
-              <Text style={[styles.specValue, { color: colors.primary }]}>Rs {sparePart.price.toLocaleString()}</Text>
+              <Text style={[styles.specValue, { color: colors.primary }]}>Rs {(sparePart.price ?? 0).toLocaleString()}</Text>
+            </View>
+          </View>
+
+          {/* Seller Info Section */}
+          <View style={[styles.sellerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.sellerHeader}>
+              <View style={[styles.sellerAvatar, { backgroundColor: colors.primary + "15" }]}>
+                <MaterialCommunityIcons name="store" size={24} color={colors.primary} />
+              </View>
+              <View style={styles.sellerInfo}>
+                <Text style={[styles.sellerLabel, { color: colors.mutedText }]}>SOLD BY</Text>
+                <Text style={[styles.sellerName, { color: colors.text }]} numberOfLines={1}>
+                  {sellerProfile?.fullName ?? "Verified Supplier"}
+                </Text>
+                {sellerProfile?.email && (
+                  <Text style={[styles.sellerEmail, { color: colors.mutedText }]} numberOfLines={1}>
+                    {sellerProfile.email}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <View style={styles.sellerActions}>
+              {sellerProfile?.email && (
+                <Pressable
+                  style={[styles.emailBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
+                  onPress={() => {
+                    const subject = encodeURIComponent("Inquiry about " + sparePart?.name);
+                    const body = encodeURIComponent(`Hello ${sellerProfile?.fullName},\n\nI am interested in: ${sparePart?.name} (Rs ${sparePart?.price}).\n\nPlease let me know availability.\n\nThank you.`);
+                    Linking.openURL(`mailto:${sellerProfile?.email}?subject=${subject}&body=${body}`).catch(() =>
+                      Alert.alert("Error", "No email app found. Contact: " + sellerProfile?.email)
+                    );
+                  }}
+                >
+                  <MaterialCommunityIcons name="email-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.emailBtnText, { color: colors.primary }]}>Email</Text>
+                </Pressable>
+              )}
+              <Pressable
+                style={[styles.viewProfileButton, { borderColor: colors.primary, backgroundColor: colors.primary + "10" }]}
+                onPress={() => navigation.navigate("SellerProfile", { sellerId: sparePart!.supplierId })}
+              >
+                <Text style={[styles.viewProfileText, { color: colors.primary }]}>View Profile</Text>
+              </Pressable>
             </View>
           </View>
         </View>
@@ -353,6 +403,72 @@ const styles = StyleSheet.create({
   addToCartText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  sellerCard: {
+    marginTop: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+  },
+  sellerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  sellerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sellerInfo: {
+    flex: 1,
+  },
+  sellerLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  sellerName: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  viewProfileButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  viewProfileText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  sellerEmail: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  sellerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 0.5,
+    borderTopColor: "rgba(0,0,0,0.08)",
+  },
+  emailBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  emailBtnText: {
+    fontSize: 12,
     fontWeight: "600",
   },
 });

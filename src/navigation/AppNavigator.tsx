@@ -29,6 +29,9 @@ import { BrowseScreen } from "../screens/browse/BrowseScreen";
 import { AdminDashboardScreen } from "../screens/admin/AdminDashboardScreen";
 import { AdminAccountScreen } from "../screens/admin/AdminAccountScreen";
 import { AdminUsersManagementScreen } from "../screens/admin/AdminUsersManagementScreen";
+import { AdminGaragesScreen } from "../screens/admin/AdminGaragesScreen";
+import { AdminBookingsScreen } from "../screens/admin/AdminBookingsScreen";
+import { AdminSuppliersScreen } from "../screens/admin/AdminSuppliersScreen";
 import { SettingsScreen } from "../screens/profile/SettingsScreen";
 import { NotificationsCenterScreen } from "../screens/profile/NotificationsCenterScreen";
 import { MyBookingsScreen } from "../screens/garages/MyBookingsScreen";
@@ -58,6 +61,9 @@ export type RootStackParamList = {
   AdminHome: undefined;
   AdminAccount: undefined;
   AdminUsers: undefined;
+  AdminGarages: undefined;
+  AdminBookings: undefined;
+  AdminSuppliers: undefined;
   Garages: undefined;
   GarageDetails: { garageId: string };
   AppointmentBooking: { garageId: string };
@@ -544,6 +550,21 @@ function AdminUsersStack() {
         name="AdminUsers"
         component={AdminUsersManagementScreen}
         options={{ title: "Users Management" }}
+      />
+      <Stack.Screen
+        name="AdminGarages"
+        component={AdminGaragesScreen}
+        options={{ title: "Garages" }}
+      />
+      <Stack.Screen
+        name="AdminBookings"
+        component={AdminBookingsScreen}
+        options={{ title: "Bookings" }}
+      />
+      <Stack.Screen
+        name="AdminSuppliers"
+        component={AdminSuppliersScreen}
+        options={{ title: "Suppliers" }}
       />
     </Stack.Navigator>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, Image, ScrollView, Modal, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image, ScrollView, Modal, ActivityIndicator, Alert } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { RootStackParamList } from "../../navigation/AppNavigator";
@@ -7,7 +7,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useShop } from "../../hooks/useShop";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import OrderApiService, { Order, SupplierStats } from "../../services/OrderApiService";
-import PaymentApiService, { PaymentStats } from "../../services/PaymentApiService";
+import PaymentApiService, { PaymentStats, Payment } from "../../services/PaymentApiService";
 import SupplierApiService from "../../services/SupplierApiService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SupplierHome">;
@@ -21,6 +21,7 @@ type Tile = {
 };
 
 export function SupplierDashboardScreen({ navigation }: Props) {
+  const { currentUser, logout } = useAuth();
   const { spareParts, setSpareParts, notifications, markNotificationsAsRead } = useShop();
   const { colors } = useAppTheme();
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -47,6 +48,8 @@ export function SupplierDashboardScreen({ navigation }: Props) {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
+  const [paidPayments, setPaidPayments] = useState<Payment[]>([]);
 
   // Fetch supplier orders and stats when modals open
   useEffect(() => {
@@ -55,8 +58,14 @@ export function SupplierDashboardScreen({ navigation }: Props) {
         fetchSupplierData();
         if (isPaymentsModalVisible) {
           setIsLoadingPayments(true);
-          PaymentApiService.getSupplierStats()
-            .then(setPaymentStats)
+          Promise.all([
+            PaymentApiService.getSupplierStats(),
+            PaymentApiService.getSupplierPendingPayments()
+          ])
+            .then(([stats, pending]) => {
+              setPaymentStats(stats);
+              setPendingPayments(pending);
+            })
             .catch(console.error)
             .finally(() => setIsLoadingPayments(false));
         }
@@ -107,17 +116,58 @@ export function SupplierDashboardScreen({ navigation }: Props) {
     setIsLoadingOrders(true);
     setIsLoadingStats(true);
     try {
-      const [orders, stats] = await Promise.all([
+      const [orders, stats, paid, pending, pStats] = await Promise.all([
         OrderApiService.getSupplierOrders(),
-        OrderApiService.getSupplierStats()
+        OrderApiService.getSupplierStats(),
+        PaymentApiService.getSupplierPaidPayments(),
+        PaymentApiService.getSupplierPendingPayments(),
+        PaymentApiService.getSupplierStats()
       ]);
-      setSupplierOrders(orders);
+      setSupplierOrders(Array.isArray(orders) ? orders : []);
       setSupplierStats(stats);
+      setPaidPayments(paid);
+      setPendingPayments(pending);
+      setPaymentStats(pStats);
     } catch (error) {
       console.error("Error fetching supplier data:", error);
     } finally {
       setIsLoadingOrders(false);
       setIsLoadingStats(false);
+    }
+  };
+
+  const handleConfirmPayment = async (paymentId: string, orderId?: string) => {
+    try {
+      await PaymentApiService.confirmPaymentReceived(paymentId, "Confirmed by supplier");
+      
+      // If we have an orderId, automatically confirm the order as well
+      if (orderId) {
+        await OrderApiService.updateOrderStatus(orderId, "CONFIRMED");
+      }
+
+      // Specific message for Supplier as requested
+      Alert.alert("Payment Verified", "Got it. I have marked the payment as received and confirmed the order.");
+      
+      // Simulation of message to User as requested
+      console.log("NOTIFICATION TO USER: Great news! The supplier has confirmed receipt of your payment. Your order is now officially confirmed.");
+
+      // Refresh all data
+      await fetchSupplierData();
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      Alert.alert("Error", "Failed to confirm payment received.");
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      await OrderApiService.updateOrderStatus(orderId, status);
+      Alert.alert("Success", `Order marked as ${status.toLowerCase()}!`);
+      // Refresh all data to update stats and lists
+      await fetchSupplierData();
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      Alert.alert("Error", "Failed to update order status.");
     }
   };
 
@@ -264,7 +314,7 @@ export function SupplierDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>My Inventory</Text>
               <Pressable onPress={() => setIsInventoryModalVisible(false)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>X</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -346,7 +396,7 @@ export function SupplierDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Orders</Text>
               <Pressable onPress={() => setIsOrdersModalVisible(false)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>X</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -365,12 +415,12 @@ export function SupplierDashboardScreen({ navigation }: Props) {
                     <Text style={[styles.summaryValue, { color: colors.primary }]}>{supplierStats.pendingOrders}</Text>
                   </View>
 
-                  {supplierOrders.length === 0 ? (
+                  {(!supplierOrders || supplierOrders.length === 0) ? (
                     <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                       <Text style={[styles.emptyText, { color: colors.mutedText }]}>No orders yet. New customer orders will appear here.</Text>
                     </View>
                   ) : (
-                    supplierOrders.map((order) => (
+                    Array.isArray(supplierOrders) && supplierOrders.map((order) => (
                       <View key={order.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
                           <Text style={[styles.itemName, { color: colors.text }]}>Order #{order.id.slice(0, 8).toUpperCase()}</Text>
@@ -378,8 +428,14 @@ export function SupplierDashboardScreen({ navigation }: Props) {
                             style={[
                               styles.statusBadge,
                               {
-                                color: order.status === "DELIVERED" ? "#10B981" : order.status === "PENDING" ? "#F59E0B" : "#6B7280",
-                                backgroundColor: order.status === "DELIVERED" ? "#D1FAE5" : order.status === "PENDING" ? "#FEF3C7" : "#F3F4F6"
+                                color: order.status === "DELIVERED" ? "#10B981" : 
+                                       order.status === "SHIPPED" ? "#6366F1" :
+                                       order.status === "CONFIRMED" ? "#3B82F6" :
+                                       order.status === "PENDING" ? "#F59E0B" : "#6B7280",
+                                backgroundColor: order.status === "DELIVERED" ? "#D1FAE5" : 
+                                                 order.status === "SHIPPED" ? "#E0E7FF" :
+                                                 order.status === "CONFIRMED" ? "#DBEAFE" :
+                                                 order.status === "PENDING" ? "#FEF3C7" : "#F3F4F6"
                               }
                             ]}
                           >
@@ -388,7 +444,71 @@ export function SupplierDashboardScreen({ navigation }: Props) {
                         </View>
                         <Text style={[styles.itemMeta, { color: colors.mutedText }]}>Customer: {order.customerName}</Text>
                         <Text style={[styles.itemMeta, { color: colors.mutedText }]}>Items: {order.items.length}</Text>
-                        <Text style={[styles.itemMeta, { color: colors.primary, fontWeight: "700" }]}>Total: Rs {order.totalAmount.toLocaleString()}</Text>
+                        <Text style={[styles.itemMeta, { color: colors.primary, fontWeight: "700" }]}>Total: Rs {(order.totalAmount ?? 0).toLocaleString()}</Text>
+                        
+                        {(() => {
+                          const matchingPayment = [...(paidPayments || []), ...(pendingPayments || [])].find(p => p.orderId === order.id);
+                          const isPaid = matchingPayment?.status === "PAID";
+                          const isSent = matchingPayment?.status === "SENT";
+                          
+                          return (
+                            <>
+                              <View style={{ 
+                                marginTop: 8, 
+                                padding: 8, 
+                                borderRadius: 8, 
+                                backgroundColor: (isPaid || order.status !== "PENDING") ? "#D1FAE5" : isSent ? "#DBEAFE" : "#FEE2E2" 
+                              }}>
+                                <Text style={{ fontSize: 12, fontWeight: "700", color: (isPaid || order.status !== "PENDING") ? "#059669" : isSent ? "#3B82F6" : "#DC2626" }}>
+                                  {(isPaid || order.status !== "PENDING") ? "✅ ORDER & PAYMENT CONFIRMED" : isSent ? "📥 PAYMENT SENT BY CUSTOMER" : "⏳ WAITING FOR PAYMENT"}
+                                </Text>
+                              </View>
+
+                              {isSent && (
+                                <Pressable
+                                  style={[styles.confirmButton, { backgroundColor: "#3B82F6", marginTop: 8 }]}
+                                  onPress={() => handleConfirmPayment(matchingPayment.id, order.id)}
+                                >
+                                  <Text style={styles.confirmButtonText}>Verify & Confirm Payment</Text>
+                                </Pressable>
+                              )}
+                              
+                              {order.status === "PENDING" && (
+                                <Pressable
+                                  style={[styles.confirmButton, { backgroundColor: isPaid ? colors.primary : "#9CA3AF", marginTop: isPaid ? 12 : 8 }]}
+                                  onPress={() => {
+                                    if (isPaid) {
+                                      handleUpdateOrderStatus(order.id, "CONFIRMED");
+                                    } else {
+                                      Alert.alert(
+                                        "Payment Not Verified",
+                                        "This order hasn't been marked as paid yet. Do you want to confirm it anyway?",
+                                        [
+                                          { text: "Wait for Payment", style: "cancel" },
+                                          { 
+                                            text: "Confirm Order", 
+                                            onPress: () => handleUpdateOrderStatus(order.id, "CONFIRMED") 
+                                          }
+                                        ]
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <Text style={styles.confirmButtonText}>Confirm Order</Text>
+                                </Pressable>
+                              )}
+                            </>
+                          );
+                        })()}
+
+                        {order.status === "CONFIRMED" && (
+                          <Pressable
+                            style={[styles.confirmButton, { backgroundColor: "#10B981", marginTop: 12 }]}
+                            onPress={() => handleUpdateOrderStatus(order.id, "SHIPPED")}
+                          >
+                            <Text style={styles.confirmButtonText}>Mark as Shipped</Text>
+                          </Pressable>
+                        )}
                       </View>
                     ))
                   )}
@@ -412,7 +532,7 @@ export function SupplierDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Analytics</Text>
               <Pressable onPress={() => setIsAnalyticsModalVisible(false)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>X</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -426,7 +546,7 @@ export function SupplierDashboardScreen({ navigation }: Props) {
                 <>
                   <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Text style={[styles.summaryLabel, { color: colors.mutedText }]}>Total Revenue</Text>
-                    <Text style={[styles.summaryValue, { color: colors.primary }]}>Rs {supplierStats.totalRevenue.toLocaleString()}</Text>
+                    <Text style={[styles.summaryValue, { color: colors.primary }]}>Rs {(supplierStats?.totalRevenue ?? 0).toLocaleString()}</Text>
                   </View>
 
                   <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -480,7 +600,7 @@ export function SupplierDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Payments</Text>
               <Pressable onPress={() => setIsPaymentsModalVisible(false)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>X</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -494,27 +614,44 @@ export function SupplierDashboardScreen({ navigation }: Props) {
                 <>
                   <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Text style={[styles.summaryLabel, { color: colors.mutedText }]}>Pending Payments to Receive</Text>
-                    <Text style={[styles.summaryValue, { color: colors.primary }]}>Rs {paymentStats.totalPaymentsPending.toLocaleString()}</Text>
+                    <Text style={[styles.summaryValue, { color: colors.primary }]}>Rs {(paymentStats?.totalPaymentsPending ?? 0).toLocaleString()}</Text>
                     <Text style={[styles.summaryLabel, { color: colors.mutedText, marginTop: 8 }]}>Orders</Text>
                     <Text style={[styles.summaryValue, { color: colors.primary }]}>{paymentStats.pendingCount}</Text>
                   </View>
 
                   <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Text style={[styles.summaryLabel, { color: colors.mutedText }]}>Total Payments Received</Text>
-                    <Text style={[styles.summaryValue, { color: colors.primary }]}>Rs {paymentStats.totalPaymentsReceived.toLocaleString()}</Text>
+                    <Text style={[styles.summaryValue, { color: colors.primary }]}>Rs {(paymentStats?.totalPaymentsReceived ?? 0).toLocaleString()}</Text>
                     <Text style={[styles.summaryLabel, { color: colors.mutedText, marginTop: 8 }]}>Orders</Text>
                     <Text style={[styles.summaryValue, { color: colors.primary }]}>{paymentStats.paidCount}</Text>
                   </View>
 
-                  {paymentStats.pendingCount === 0 ? (
+                  {pendingPayments.length === 0 ? (
                     <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                       <Text style={[styles.emptyText, { color: colors.mutedText }]}>Great! No pending payments right now. All payments have been received.</Text>
                     </View>
                   ) : (
-                    <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                      <Text style={[styles.itemName, { color: colors.text }]}>📌 Reminder: You have {paymentStats.pendingCount} pending payment(s) waiting from customers.</Text>
-                      <Text style={[styles.itemMeta, { color: colors.mutedText, marginTop: 8 }]}>Follow up with customers to complete their payments and increase your cash flow.</Text>
-                    </View>
+                    pendingPayments.map((payment) => (
+                      <View 
+                        key={payment.id} 
+                        style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      >
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                          <Text style={[styles.itemName, { color: colors.text }]}>Order #{payment.orderId.slice(0, 8).toUpperCase()}</Text>
+                          <Text style={[styles.price, { color: colors.primary }]}>Rs {payment.amount.toLocaleString()}</Text>
+                        </View>
+                        <Text style={[styles.itemMeta, { color: colors.mutedText }]}>Method: {payment.paymentMethod}</Text>
+                        <Text style={[styles.itemMeta, { color: colors.mutedText }]}>Ref: {payment.reference || "N/A"}</Text>
+                        {payment.status === "SENT" && (
+                          <Pressable
+                            style={[styles.confirmButton, { backgroundColor: "#3B82F6", marginTop: 12 }]}
+                            onPress={() => handleConfirmPayment(payment.id, payment.orderId)}
+                          >
+                            <Text style={styles.confirmButtonText}>Confirm Received</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    ))
                   )}
                 </>
               )}

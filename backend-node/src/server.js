@@ -15,11 +15,13 @@ const sparePartsRoutes = require("./routes/sparePartsRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const paymentMethodRoutes = require("./routes/paymentMethodRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 const app = express();
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
@@ -34,6 +36,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });

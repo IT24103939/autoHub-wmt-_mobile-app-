@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Alert, Image } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Alert, Image, KeyboardAvoidingView, Platform } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -52,8 +52,14 @@ export function AddSparePartScreen({ navigation }: Props) {
 
   const pickImage = async () => {
     try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Please allow access to your photo library to pick an image.");
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.IMAGES,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -142,7 +148,11 @@ export function AddSparePartScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -291,7 +301,8 @@ export function AddSparePartScreen({ navigation }: Props) {
         textColor={colors.text}
         spinnerColor={colors.primary}
       />
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

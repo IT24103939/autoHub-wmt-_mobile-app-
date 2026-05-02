@@ -5,7 +5,7 @@ import { errorLogger } from "../utils/errorLogger";
 import { Platform } from "react-native";
 
 // Updated to use the local Wi-Fi IP address for Expo Go testing
-const API_BASE_URL = Platform.OS === "web" ? "http://localhost:8099/api" : "http://172.28.18.120:8099/api";
+const API_BASE_URL = Platform.OS === "web" ? "http://localhost:8099/api" : "http://192.168.8.110:8099/api";
 
 export interface ApiConfig {
   baseURL: string;
@@ -25,7 +25,7 @@ class ApiClientClass {
   private userToken: string | null = null;
   private userId: string | null = null;
 
-  constructor(baseURL: string = API_BASE_URL, timeout: number = 30000) {
+  constructor(baseURL: string = API_BASE_URL, timeout: number = 60000) {
     this.baseURL = baseURL;
     this.timeout = timeout;
   }
@@ -78,13 +78,21 @@ class ApiClientClass {
         options.body = JSON.stringify(data);
       }
 
-      // Use Promise.race instead of AbortController to avoid React Native RangeError bug
-      const fetchPromise = fetch(url, options);
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Request timeout")), this.timeout);
-      });
+      // Use a longer timeout for large requests (like images)
+      const requestTimeout = data ? 120000 : this.timeout; // 2 minutes for uploads, default for others
 
-      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+      // Use Promise.race instead of AbortController to avoid React Native RangeError bug
+      // Use a more standard fetch pattern for React Native to avoid polyfill bugs
+      const response = await Promise.race([
+        fetch(url, options),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Request timeout")), requestTimeout);
+        })
+      ]);
+
+      if (!(response instanceof Response)) {
+         throw new Error("Invalid response received");
+      }
 
       if (!response.ok) {
         const errorData = await this.parseResponse(response);
@@ -100,28 +108,32 @@ class ApiClientClass {
       // Log all network errors
       errorLogger.log(error, "network", endpoint);
       
+      // Handle the specific RangeError if it bubbled up
+      const errorMessage = error?.message || String(error);
+      const isRangeError = errorMessage.includes("status provided (0)");
+
       // Only use console.error for actual network failures, not HTTP error responses
       if (error.status) {
         console.log("[API Error]", {
           url,
           method,
           status: error.status,
-          error: error?.message || String(error),
+          error: errorMessage,
           timestamp: new Date().toISOString()
         });
       } else {
         console.error("[Network Error]", {
           url,
           method,
-          error: error?.message || String(error),
+          error: isRangeError ? "Polyfill RangeError (Status 0)" : errorMessage,
           timestamp: new Date().toISOString()
         });
       }
 
-      if (error instanceof TypeError) {
+      if (error instanceof TypeError || isRangeError) {
         throw {
           status: 0,
-          message: "Network error: " + error.message
+          message: "Network error: " + (isRangeError ? "Connection interrupted" : errorMessage)
         } as ApiError;
       }
 
@@ -132,7 +144,7 @@ class ApiClientClass {
 
       throw {
         status: 0,
-        message: error?.message || "Unknown network error"
+        message: errorMessage || "Unknown network error"
       } as ApiError;
     }
   }

@@ -21,33 +21,40 @@ export default function CustomerPaymentsScreen({ navigation }: Props) {
   const [selectedPayment, setSelectedPayment] = useState<PaymentWithGarage | null>(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
 
-  useEffect(() => {
-    const fetchPayments = async () => {
-      if (!currentUser) return;
-      setIsLoading(true);
-      try {
-        const customerPayments = await PaymentApiService.getCustomerPayments();
-        setPayments(customerPayments);
-      } catch (error) {
-        console.error("Error fetching payments:", error);
-        Alert.alert("Error", "Failed to load payments");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchPayments = async (silent = false) => {
+    if (!currentUser) return;
+    if (!silent) setIsLoading(true);
+    try {
+      const customerPayments = await PaymentApiService.getCustomerPayments();
+      setPayments(Array.isArray(customerPayments) ? customerPayments : []);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      if (!silent) Alert.alert("Error", "Failed to load payments");
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchPayments();
+
+    // Set up polling for real-time updates (every 10 seconds)
+    const intervalId = setInterval(() => {
+      fetchPayments(true);
+    }, 10000);
+
+    return () => clearInterval(intervalId);
   }, [currentUser]);
 
   const handleProcessPayment = async (payment: PaymentWithGarage) => {
     setIsProcessing(true);
     try {
       await PaymentApiService.processPayment(payment.id);
-      Alert.alert("Success", "Payment marked as completed!");
+      Alert.alert("Success", "Payment sent! The supplier will verify it soon.");
       
       // Update local state
       setPayments(payments.map(p => 
-        p.id === payment.id ? { ...p, status: "PAID" } : p
+        p.id === payment.id ? { ...p, status: "SENT" } : p
       ));
       setIsDetailModalVisible(false);
       setSelectedPayment(null);
@@ -59,13 +66,17 @@ export default function CustomerPaymentsScreen({ navigation }: Props) {
     }
   };
 
-  const pendingPayments = payments.filter(p => p.status === "PENDING");
-  const paidPayments = payments.filter(p => p.status === "PAID");
+  const paymentsList = Array.isArray(payments) ? payments : [];
+  const pendingPayments = paymentsList.filter(p => p.status === "PENDING");
+  const sentPayments = paymentsList.filter(p => p.status === "SENT");
+  const paidPayments = paymentsList.filter(p => p.status === "PAID");
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
         return colors.warning || "#FFA500";
+      case "SENT":
+        return colors.primary || "#3B82F6";
       case "PAID":
         return colors.success || "#4CAF50";
       case "FAILED":
@@ -79,8 +90,10 @@ export default function CustomerPaymentsScreen({ navigation }: Props) {
     switch (status) {
       case "PENDING":
         return "⏳ Pending";
+      case "SENT":
+        return "📤 Sent & Awaiting Verification";
       case "PAID":
-        return "✓ Paid";
+        return "✓ Verified & Paid";
       case "FAILED":
         return "✗ Failed";
       default:
@@ -145,6 +158,47 @@ export default function CustomerPaymentsScreen({ navigation }: Props) {
                 ))
               )}
             </View>
+
+            {/* Sent Payments Section */}
+            {sentPayments.length > 0 && (
+              <View style={[styles.section, { marginTop: 24 }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Sent Payments ({sentPayments.length})
+                </Text>
+                {sentPayments.map((payment) => (
+                  <Pressable
+                    key={payment.id}
+                    style={[styles.paymentCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => {
+                      setSelectedPayment(payment);
+                      setIsDetailModalVisible(true);
+                    }}
+                  >
+                    <View style={styles.cardContent}>
+                      <View style={styles.cardHeader}>
+                        <Text style={[styles.paymentAmount, { color: colors.primary }]}>
+                          Rs {payment.amount?.toLocaleString() || 0}
+                        </Text>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: getStatusColor(payment.status) + "20" }
+                          ]}
+                        >
+                          <Text style={[styles.statusText, { color: getStatusColor(payment.status) }]}>
+                            {getStatusBadge(payment.status)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.cardMeta, { color: colors.mutedText }]}>
+                        Order: {payment.orderId?.substring(0, 8)}...
+                      </Text>
+                    </View>
+                    <Text style={[styles.cardArrow, { color: colors.primary }]}>→</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
 
             {/* Paid Payments Section */}
             <View style={[styles.section, { marginTop: 24 }]}>

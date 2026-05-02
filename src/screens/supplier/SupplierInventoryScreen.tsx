@@ -95,7 +95,7 @@ export function SupplierInventoryScreen({ navigation }: Props) {
 
         {/* Price and Stock */}
         <View style={styles.priceStockRow}>
-          <Text style={[styles.price, { color: colors.primary }]}>Rs {item.price.toLocaleString()}</Text>
+          <Text style={[styles.price, { color: colors.primary }]}>Rs {(item.price ?? 0).toLocaleString()}</Text>
           <Text style={[styles.stock, { color: item.quantity > 0 ? colors.success : colors.error }]}>
             Stock: {item.quantity}
           </Text>

@@ -1,11 +1,12 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Image } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Image, Platform, StatusBar } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/AppNavigator";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import { useShop } from "../../hooks/useShop";
 import { useAuth } from "../../hooks/useAuth";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = NativeStackScreenProps<RootStackParamList, "UserHome">;
 
@@ -14,36 +15,39 @@ export function UserHomeScreen({ navigation }: Props) {
   const { spareParts, garages, notifications, markNotificationsAsRead } = useShop();
   const unreadCount = notifications.filter(n => !n.read).length;
   const { currentUser } = useAuth();
+  const insets = useSafeAreaInsets();
 
-  // Get featured spare parts (first 2)
-  const featuredParts = useMemo(() => spareParts.slice(0, 2), [spareParts]);
+  const featuredParts = useMemo(() => spareParts.slice(0, 4), [spareParts]);
+  const topGarages = useMemo(() => garages.slice(0, 3), [garages]);
 
-  // Get top garages by rating
-  const topGarages = useMemo(() => {
-    return garages.slice(0, 2);
-  }, [garages]);
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  const firstName = currentUser?.fullName?.split(" ")[0] ?? "there";
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={[styles.brandName, { color: colors.primary }]}>🚗 AutoHub</Text>
-              <Text style={[styles.brandSubtitle, { color: colors.text }]}>Your Garage & Spare Parts Solution</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+
+        {/* Hero Header */}
+        <View style={[styles.hero, { backgroundColor: colors.primary, paddingTop: insets.top + 16 }]}>
+          <View style={styles.heroRow}>
+            <View style={styles.heroText}>
+              <Text style={styles.heroGreeting}>{greeting()},</Text>
+              <Text style={styles.heroName}>{firstName} 👋</Text>
             </View>
-            <Pressable 
-              style={[styles.notificationIcon, { backgroundColor: colors.primary }]}
+            <Pressable
+              style={styles.notifBtn}
               onPress={() => {
                 markNotificationsAsRead();
                 navigation.navigate("AccountTab", { screen: "NotificationsCenter" });
               }}
             >
-              <MaterialCommunityIcons name="bell" size={20} color={colors.primaryText} />
+              <MaterialCommunityIcons name="bell-outline" size={22} color="white" />
               {unreadCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
@@ -51,53 +55,70 @@ export function UserHomeScreen({ navigation }: Props) {
               )}
             </Pressable>
           </View>
+
+          {/* Search Bar inside hero */}
+          <Pressable
+            style={styles.searchBar}
+            onPress={() => navigation.getParent()?.navigate("BrowseTab" as any)}
+          >
+            <MaterialCommunityIcons name="magnify" size={18} color="#666" />
+            <Text style={styles.searchPlaceholder}>Search parts, garages...</Text>
+          </Pressable>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchSection}>
-          <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="magnify" size={20} color={colors.mutedText} />
-            <TextInput
-              placeholder="Find Parts or Garages..."
-              placeholderTextColor={colors.mutedText}
-              style={[styles.searchInput, { color: colors.text }]}
-              onFocus={() => navigation.getParent()?.navigate("BrowseTab" as any)}
-            />
-          </View>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          {[
+            { icon: "car-wrench", label: "Garages", color: "#4F46E5", onPress: () => navigation.navigate("Garages") },
+            { icon: "calendar-plus", label: "Book Now", color: "#10B981", onPress: () => topGarages[0] && navigation.navigate("AppointmentBooking", { garageId: topGarages[0].id }) },
+            { icon: "package-variant", label: "Parts", color: "#F59E0B", onPress: () => navigation.navigate("SpareParts") },
+            { icon: "magnify", label: "Search", color: "#EC4899", onPress: () => navigation.getParent()?.navigate("BrowseTab" as any) },
+          ].map((item) => (
+            <Pressable key={item.label} style={styles.quickActionItem} onPress={item.onPress}>
+              <View style={[styles.quickActionIcon, { backgroundColor: item.color + "18" }]}>
+                <MaterialCommunityIcons name={item.icon as any} size={24} color={item.color} />
+              </View>
+              <Text style={[styles.quickActionLabel, { color: colors.text }]}>{item.label}</Text>
+            </Pressable>
+          ))}
         </View>
 
         {/* Featured Spare Parts */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Featured Spare Parts</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Featured Parts</Text>
             <Pressable onPress={() => navigation.navigate("SpareParts")}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See All →</Text>
             </Pressable>
           </View>
 
-          <View style={styles.featuredGrid}>
-            {featuredParts.map((part) => (
-              <Pressable
-                key={part.id}
-                style={[styles.featureCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => navigation.navigate("SparePartDetails", { partId: part.id })}
-              >
-                <View style={[styles.partImagePlaceholder, { backgroundColor: colors.background }]}>
-                  {part.image ? (
-                    <Image 
-                      source={{ uri: part.image }} 
-                      style={styles.partImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <MaterialCommunityIcons name="package" size={40} color={colors.primary} />
-                  )}
-                </View>
-                <Text style={[styles.partName, { color: colors.text }]}>{part.name}</Text>
-                <Text style={[styles.partPrice, { color: colors.primary }]}>Rs {part.price.toLocaleString()}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 16 }}>
+            {featuredParts.length === 0 ? (
+              <View style={[styles.emptyHint, { backgroundColor: colors.card }]}>
+                <MaterialCommunityIcons name="package-variant-closed" size={32} color={colors.mutedText} />
+                <Text style={[styles.emptyHintText, { color: colors.mutedText }]}>No parts yet</Text>
+              </View>
+            ) : (
+              featuredParts.map((part) => (
+                <Pressable
+                  key={part.id}
+                  style={[styles.partCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate("SparePartDetails", { partId: part.id })}
+                >
+                  <View style={[styles.partImageBox, { backgroundColor: colors.background }]}>
+                    {part.image ? (
+                      <Image source={{ uri: part.image }} style={styles.partImage} resizeMode="cover" />
+                    ) : (
+                      <MaterialCommunityIcons name="package" size={36} color={colors.primary} />
+                    )}
+                  </View>
+                  <Text style={[styles.partName, { color: colors.text }]} numberOfLines={1}>{part.name}</Text>
+                  <Text style={[styles.partCategory, { color: colors.mutedText }]} numberOfLines={1}>{part.category}</Text>
+                  <Text style={[styles.partPrice, { color: colors.primary }]}>Rs {(part.price ?? 0).toLocaleString()}</Text>
+                </Pressable>
+              ))
+            )}
+          </ScrollView>
         </View>
 
         {/* Top Garages */}
@@ -105,257 +126,184 @@ export function UserHomeScreen({ navigation }: Props) {
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Garages</Text>
             <Pressable onPress={() => navigation.navigate("Garages")}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See All →</Text>
             </Pressable>
           </View>
 
-          <View style={styles.garagesGrid}>
-            {topGarages.map((garage) => (
-              <Pressable
-                key={garage.id}
-                style={[styles.garageCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => navigation.navigate("GarageDetails", { garageId: garage.id })}
-              >
-                <View style={[styles.garageImagePlaceholder, { backgroundColor: colors.background }]}>
-                  <MaterialCommunityIcons name="garage" size={40} color={colors.primary} />
-                </View>
-                <Text style={[styles.garageName, { color: colors.text }]}>{garage.name}</Text>
-                <View style={styles.ratingContainer}>
-                  <MaterialCommunityIcons name="star" size={14} color="#FFA500" />
-                  <Text style={[styles.rating, { color: colors.text }]}>4.5</Text>
-                </View>
-              </Pressable>
-            ))}
+          <View style={{ gap: 10 }}>
+            {topGarages.length === 0 ? (
+              <View style={[styles.emptyHint, { backgroundColor: colors.card }]}>
+                <MaterialCommunityIcons name="garage" size={32} color={colors.mutedText} />
+                <Text style={[styles.emptyHintText, { color: colors.mutedText }]}>No garages yet</Text>
+              </View>
+            ) : (
+              topGarages.map((garage) => (
+                <Pressable
+                  key={garage.id}
+                  style={[styles.garageCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate("GarageDetails", { garageId: garage.id })}
+                >
+                  <View style={[styles.garageIconBox, { backgroundColor: colors.primary + "15" }]}>
+                    <MaterialCommunityIcons name="garage" size={28} color={colors.primary} />
+                  </View>
+                  <View style={styles.garageInfo}>
+                    <Text style={[styles.garageName, { color: colors.text }]} numberOfLines={1}>{garage.name}</Text>
+                    <Text style={[styles.garageAddress, { color: colors.mutedText }]} numberOfLines={1}>{garage.city}</Text>
+                    <View style={styles.garageMeta}>
+                      <MaterialCommunityIcons name="map-marker" size={12} color={colors.mutedText} />
+                      <Text style={[styles.garageMetaText, { color: colors.mutedText }]}>{garage.address}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.garageArrow}>
+                    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.mutedText} />
+                  </View>
+                </Pressable>
+              ))
+            )}
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <Pressable
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-            onPress={() => navigation.navigate("AppointmentBooking", { garageId: topGarages[0]?.id || "" })}
-          >
-            <MaterialCommunityIcons name="calendar-check" size={20} color={colors.primaryText} />
-            <Text style={[styles.primaryButtonText, { color: colors.primaryText }]}>BOOK APPOINTMENT</Text>
-          </Pressable>
-
-          {currentUser?.role === "GARAGE_OWNER" || currentUser?.role === "SUPPLIER" ? (
-            <Pressable
-              style={[styles.secondaryButton, { backgroundColor: "#FF8C42", borderColor: "#FF8C42" }]}
-              onPress={() => {
-                if (currentUser?.role === "SUPPLIER") {
-                  navigation.navigate("HomeTab" as any);
-                } else {
-                  navigation.navigate("HomeTab" as any);
-                }
-              }}
-            >
-              <MaterialCommunityIcons name="plus" size={20} color="white" />
-              <Text style={styles.secondaryButtonText}>ADD LISTING</Text>
-            </Pressable>
-          ) : null}
-        </View>
-
-        <View style={styles.spacer} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  header: {
+  root: { flex: 1 },
+  scrollContent: { paddingBottom: 100 },
+
+  // Hero
+  hero: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  headerContent: {
+  heroRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    marginBottom: 16,
   },
-  brandName: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  brandSubtitle: {
-    fontSize: 13,
-    fontWeight: "500",
-    opacity: 0.8,
-  },
-  notificationIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  heroText: { flex: 1 },
+  heroGreeting: { color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: "500" },
+  heroName: { color: "#fff", fontSize: 24, fontWeight: "800", marginTop: 2 },
+  notifBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative"
+    position: "relative",
   },
   badge: {
     position: "absolute",
-    top: -4,
-    right: -4,
+    top: -3,
+    right: -3,
     backgroundColor: "#FF3B30",
-    minWidth: 18,
-    height: 18,
+    minWidth: 17,
+    height: 17,
     borderRadius: 9,
     borderWidth: 1.5,
     borderColor: "white",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 2
+    paddingHorizontal: 2,
   },
-  badgeText: {
-    color: "white",
-    fontSize: 10,
-    fontWeight: "bold"
-  },
-  searchSection: {
-    padding: 16,
-    paddingBottom: 12,
-  },
+  badgeText: { color: "white", fontSize: 9, fontWeight: "bold" },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
+    backgroundColor: "white",
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 8,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-  },
-  section: {
+  searchPlaceholder: { color: "#999", fontSize: 14, flex: 1 },
+
+  // Quick Actions
+  quickActions: {
+    flexDirection: "row",
     paddingHorizontal: 16,
-    marginBottom: 24,
+    paddingTop: 20,
+    paddingBottom: 8,
+    gap: 8,
   },
+  quickActionItem: { flex: 1, alignItems: "center", gap: 6 },
+  quickActionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickActionLabel: { fontSize: 11, fontWeight: "600" },
+
+  // Sections
+  section: { paddingHorizontal: 16, marginTop: 24 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  seeAll: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  featuredGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  featureCard: {
-    flex: 1,
+  sectionTitle: { fontSize: 17, fontWeight: "700" },
+  seeAll: { fontSize: 13, fontWeight: "600" },
+
+  // Parts
+  partCard: {
+    width: 140,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
-    alignItems: "center",
   },
-  partImagePlaceholder: {
-    width: "100%",
-    height: 80,
-    borderRadius: 8,
+  partImageBox: {
+    height: 90,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
     overflow: "hidden",
   },
-  partImage: {
-    width: "100%",
-    height: "100%",
-  },
-  partName: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  partPrice: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  garagesGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
+  partImage: { width: "100%", height: "100%" },
+  partName: { fontSize: 13, fontWeight: "700", marginBottom: 2 },
+  partCategory: { fontSize: 11, marginBottom: 6 },
+  partPrice: { fontSize: 14, fontWeight: "800" },
+
+  // Garages
   garageCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-  },
-  garageImagePlaceholder: {
-    width: "100%",
-    height: 80,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  garageName: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 6,
-    textAlign: "center",
-  },
-  ratingContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-  },
-  rating: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  actionButtons: {
-    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
     gap: 12,
-    marginBottom: 24,
   },
-  primaryButton: {
-    flexDirection: "row",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+  garageIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
   },
-  primaryButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  secondaryButton: {
-    flexDirection: "row",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+  garageInfo: { flex: 1 },
+  garageName: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  garageAddress: { fontSize: 12, marginBottom: 4 },
+  garageMeta: { flexDirection: "row", alignItems: "center", gap: 3 },
+  garageMetaText: { fontSize: 11 },
+  garageArrow: {},
+
+  // Empty
+  emptyHint: {
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 32,
+    borderRadius: 14,
     gap: 8,
-    borderWidth: 1,
+    flex: 1,
   },
-  secondaryButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "white",
-    letterSpacing: 0.5,
-  },
-  spacer: {
-    height: 20,
-  },
+  emptyHintText: { fontSize: 13 },
 });

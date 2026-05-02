@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { View, Text, StyleSheet, Pressable, Image, ScrollView, Modal, Alert, StatusBar } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -8,6 +8,7 @@ import { useShop } from "../../hooks/useShop";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import { Appointment } from "../../types/models";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import PaymentApiService, { PaymentStats, Payment } from "../../services/PaymentApiService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OwnerHome">;
 
@@ -29,6 +30,15 @@ export function OwnerDashboardScreen({ navigation }: Props) {
   const [isBookingsModalVisible, setIsBookingsModalVisible] = useState(false);
   const [isReviewsModalVisible, setIsReviewsModalVisible] = useState(false);
   const [isNotificationsModalVisible, setIsNotificationsModalVisible] = useState(false);
+  const [isPaymentsModalVisible, setIsPaymentsModalVisible] = useState(false);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [paymentStats, setPaymentStats] = useState<PaymentStats>({
+    totalPaymentsPending: 0,
+    totalPaymentsReceived: 0,
+    pendingCount: 0,
+    paidCount: 0
+  });
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
 
   const ownerGarages = garages.filter((garage) => garage.ownerId === currentUser?.id);
 
@@ -52,6 +62,39 @@ export function OwnerDashboardScreen({ navigation }: Props) {
   
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  useEffect(() => {
+    if (isPaymentsModalVisible && currentUser) {
+      setIsLoadingPayments(true);
+      Promise.all([
+        PaymentApiService.getSupplierStats(),
+        PaymentApiService.getSupplierPendingPayments()
+      ])
+        .then(([stats, pending]) => {
+          setPaymentStats(stats);
+          setPendingPayments(pending);
+        })
+        .catch(console.error)
+        .finally(() => setIsLoadingPayments(false));
+    }
+  }, [isPaymentsModalVisible, currentUser]);
+
+  const handleConfirmPayment = async (paymentId: string) => {
+    try {
+      await PaymentApiService.confirmPaymentReceived(paymentId, "Confirmed by garage owner");
+      Alert.alert("Success", "Payment marked as received!");
+      // Refresh data
+      const [stats, pending] = await Promise.all([
+        PaymentApiService.getSupplierStats(),
+        PaymentApiService.getSupplierPendingPayments()
+      ]);
+      setPaymentStats(stats);
+      setPendingPayments(pending);
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      Alert.alert("Error", "Failed to confirm payment received.");
+    }
+  };
+
   const ownerServicesCount = ownerGarages.reduce(
     (total, garage) => total + garage.services.length,
     0
@@ -73,6 +116,13 @@ export function OwnerDashboardScreen({ navigation }: Props) {
       label: "Settings",
       description: "Account & password",
       onPress: () => navigation.navigate("AccountTab" as any),
+      color: "#10B981"
+    },
+    {
+      icon: "cash-multiple",
+      label: "Payments",
+      description: "Track earnings",
+      onPress: () => setIsPaymentsModalVisible(true),
       color: "#10B981"
     },
     {
@@ -181,7 +231,8 @@ export function OwnerDashboardScreen({ navigation }: Props) {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Customer Appointments</Text>
         {ownerAppointments.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.emptyText, { color: colors.mutedText }]}>No appointments booked for your garage yet.</Text>
+            <MaterialCommunityIcons name="calendar-blank-outline" size={40} color={colors.mutedText} />
+            <Text style={[styles.emptyText, { color: colors.mutedText }]}>No appointments booked yet.</Text>
           </View>
         ) : (
           ownerAppointments.map((appointment) => (
@@ -190,20 +241,53 @@ export function OwnerDashboardScreen({ navigation }: Props) {
               onPress={() => setSelectedAppointment(appointment)}
               style={({ pressed }) => [
                 styles.appointmentCard,
-                { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }
+                { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }
               ]}
             >
-              <Text style={[styles.appointmentTitle, { color: colors.text }]}>{appointment.garageName}</Text>
-              <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>Customer: {appointment.customerName}</Text>
-              <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>Phone: {appointment.customerPhone}</Text>
-              <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>Service: {appointment.service}</Text>
-              <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>Date: {appointment.appointmentDate}</Text>
-              <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>Time: {appointment.appointmentTime}</Text>
-              {appointment.notes ? (
-                <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>Notes: {appointment.notes}</Text>
-              ) : null}
-              <Text style={[styles.appointmentStatus, { color: colors.primary }]}>Status: {appointment.status}</Text>
-              <Text style={[styles.devHint, { color: colors.mutedText }]}>Tap to view details</Text>
+              {/* Row 1: Garage name + Status chip */}
+              <View style={styles.appointmentRow}>
+                <View style={styles.appointmentIcon}>
+                  <MaterialCommunityIcons name="account" size={20} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.appointmentTitle, { color: colors.text }]}>{appointment.customerName}</Text>
+                  <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>{appointment.service}</Text>
+                </View>
+                <View style={[
+                  styles.statusChip,
+                  { 
+                    backgroundColor: appointment.status === "CONFIRMED" 
+                      ? "#10B98120" 
+                      : appointment.status === "CANCELLED" 
+                        ? "#EF444420" 
+                        : "#F59E0B20"
+                  }
+                ]}>
+                  <Text style={[
+                    styles.statusChipText,
+                    {
+                      color: appointment.status === "CONFIRMED" 
+                        ? "#10B981" 
+                        : appointment.status === "CANCELLED" 
+                          ? "#EF4444" 
+                          : "#F59E0B"
+                    }
+                  ]}>{appointment.status}</Text>
+                </View>
+              </View>
+
+              {/* Row 2: Date, Time */}
+              <View style={[styles.appointmentFooter, { borderTopColor: colors.border }]}>
+                <View style={styles.appointmentMetaItem}>
+                  <MaterialCommunityIcons name="calendar" size={13} color={colors.mutedText} />
+                  <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>{appointment.appointmentDate}</Text>
+                </View>
+                <View style={styles.appointmentMetaItem}>
+                  <MaterialCommunityIcons name="clock-outline" size={13} color={colors.mutedText} />
+                  <Text style={[styles.appointmentMeta, { color: colors.mutedText }]}>{appointment.appointmentTime}</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.mutedText} />
+              </View>
             </Pressable>
           ))
         )}
@@ -226,7 +310,7 @@ export function OwnerDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>📊 Booking Details</Text>
               <Pressable onPress={() => setSelectedAppointment(null)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>✕</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -314,7 +398,7 @@ export function OwnerDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Services Details</Text>
               <Pressable onPress={() => setIsServicesModalVisible(false)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>X</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -376,7 +460,7 @@ export function OwnerDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Bookings Details</Text>
               <Pressable onPress={() => setIsBookingsModalVisible(false)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>X</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -425,7 +509,7 @@ export function OwnerDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Reviews Details</Text>
               <Pressable onPress={() => setIsReviewsModalVisible(false)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>X</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -474,7 +558,7 @@ export function OwnerDashboardScreen({ navigation }: Props) {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Notifications</Text>
               <Pressable onPress={() => setIsNotificationsModalVisible(false)}>
-                <Text style={[styles.closeButton, { color: colors.primary }]}>X</Text>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
               </Pressable>
             </View>
 
@@ -505,6 +589,73 @@ export function OwnerDashboardScreen({ navigation }: Props) {
               >
                 <Text style={[styles.closeDetailsButtonText, { color: colors.text }]}>Close</Text>
               </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Payments Modal */}
+      <Modal visible={isPaymentsModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>💰 Payments</Text>
+              <Pressable onPress={() => setIsPaymentsModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={22} color={colors.mutedText} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {isLoadingPayments ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: colors.mutedText }]}>Loading payments...</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={[styles.serviceSummaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.serviceSummaryLabel, { color: colors.mutedText }]}>Pending to Receive</Text>
+                    <Text style={[styles.serviceSummaryValue, { color: colors.primary }]}>Rs {(paymentStats?.totalPaymentsPending ?? 0).toLocaleString()}</Text>
+                  </View>
+
+                  {pendingPayments.length === 0 ? (
+                    <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      <Text style={[styles.emptyText, { color: colors.mutedText }]}>No pending payments to confirm.</Text>
+                    </View>
+                  ) : (
+                    pendingPayments.map((payment) => (
+                      <View 
+                        key={payment.id} 
+                        style={[styles.serviceGarageCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      >
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                          <Text style={[styles.serviceGarageName, { color: colors.text }]}>Order #{payment.orderId.slice(0, 8).toUpperCase()}</Text>
+                          <Text style={[styles.statValue, { color: colors.primary, fontSize: 16, marginTop: 0 }]}>Rs {payment.amount.toLocaleString()}</Text>
+                        </View>
+                        <Text style={[styles.serviceItemText, { color: colors.mutedText }]}>Method: {payment.paymentMethod}</Text>
+                        <Text style={[styles.serviceItemText, { color: colors.mutedText }]}>Ref: {payment.reference || "N/A"}</Text>
+                        
+                        <Pressable
+                          style={[styles.confirmButton, { backgroundColor: colors.primary, marginTop: 12 }]}
+                          onPress={() => handleConfirmPayment(payment.id)}
+                        >
+                          <Text style={styles.confirmButtonText}>Confirm Received</Text>
+                        </Pressable>
+                      </View>
+                    ))
+                  )}
+
+                  <Pressable
+                    style={[
+                      styles.closeDetailsButton,
+                      { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+                    ]}
+                    onPress={() => setIsPaymentsModalVisible(false)}
+                  >
+                    <Text style={[styles.closeDetailsButtonText, { color: colors.text }]}>Close</Text>
+                  </Pressable>
+                </>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -671,9 +822,48 @@ const styles = StyleSheet.create({
   },
   appointmentCard: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
-    marginBottom: 12
+    marginBottom: 12,
+    overflow: "hidden",
+  },
+  appointmentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+  appointmentIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: "rgba(99,102,241,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statusChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  statusChipText: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  appointmentFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderTopWidth: 0.5,
+    paddingTop: 10,
+    gap: 12,
+  },
+  appointmentMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flex: 1,
   },
   appointmentTitle: {
     fontSize: 15,
@@ -798,7 +988,25 @@ const styles = StyleSheet.create({
   serviceSummaryValue: {
     fontSize: 24,
     fontWeight: "800",
-    marginTop: 4
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+  },
+  confirmButton: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
   },
   serviceGarageCard: {
     borderWidth: 1,

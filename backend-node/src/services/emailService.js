@@ -333,10 +333,138 @@ async function sendBookingConfirmedEmail(customerEmail, customerName, bookingDet
   }
 }
 
+/**
+ * Send order confirmation email to customer
+ */
+async function sendOrderConfirmedEmail(customerEmail, customerName, orderDetails) {
+  try {
+    const { _id, id, totalAmount, items } = orderDetails;
+    const orderIdStr = (id || _id || "").toString();
+    
+    const itemsHtml = items.map(item => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.partName}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.quantity}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">Rs ${item.unitPrice.toLocaleString()}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">Rs ${item.subtotal.toLocaleString()}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #4CAF50;">Order Confirmed!</h2>
+              <p style="color: #666;">Order ID: #${orderIdStr.slice(-8).toUpperCase()}</p>
+            </div>
+            
+            <p>Dear ${customerName},</p>
+            <p>Great news! Your order has been confirmed by the supplier and is now being processed.</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+              <thead>
+                <tr style="background-color: #f8f8f8;">
+                  <th style="padding: 10px; text-align: left;">Item</th>
+                  <th style="padding: 10px; text-align: left;">Qty</th>
+                  <th style="padding: 10px; text-align: left;">Price</th>
+                  <th style="padding: 10px; text-align: left;">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="3" style="padding: 10px; text-align: right; font-weight: bold;">Total Amount:</td>
+                  <td style="padding: 10px; font-weight: bold; color: #4CAF50;">Rs ${totalAmount.toLocaleString()}</td>
+                </tr>
+              </tfoot>
+            </table>
+            
+            <p>You will receive another update once your order has been shipped.</p>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center;">
+              <p>Thank you for choosing WMT Mobile App.</p>
+              <p>&copy; 2026 WMT Mobile App</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    if (customerEmail && customerEmail.trim() !== "") {
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        to: customerEmail,
+        subject: `Order Confirmed: #${orderIdStr.slice(-8).toUpperCase()} - WMT Mobile App`,
+        html: htmlContent
+      });
+      console.log(`Order confirmation email sent to ${customerEmail}`);
+    }
+  } catch (error) {
+    console.error("Failed to send order confirmation email:", error);
+  }
+}
+
+/**
+ * Send order shipped email to customer
+ */
+async function sendOrderShippedEmail(customerEmail, customerName, orderDetails) {
+  try {
+    const { _id, id } = orderDetails;
+    const orderIdStr = (id || _id || "").toString();
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #2196F3;">Your Order has Shipped!</h2>
+              <p style="color: #666;">Order ID: #${orderIdStr.slice(-8).toUpperCase()}</p>
+            </div>
+            
+            <p>Dear ${customerName},</p>
+            <p>Exciting news! Your order has been picked up by our courier and is on its way to you.</p>
+            
+            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #2196F3;">
+              <p style="margin: 0;"><strong>Status:</strong> Shipped & In Transit</p>
+              <p style="margin: 5px 0 0 0;"><strong>Estimated Delivery:</strong> 2-3 business days</p>
+            </div>
+
+            <p>You can track your order status directly in the WMT Mobile App.</p>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center;">
+              <p>Thank you for choosing WMT Mobile App.</p>
+              <p>&copy; 2026 WMT Mobile App</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    if (customerEmail && customerEmail.trim() !== "") {
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        to: customerEmail,
+        subject: `Your Order #${orderIdStr.slice(-8).toUpperCase()} has Shipped! - WMT Mobile App`,
+        html: htmlContent
+      });
+      console.log(`Order shipped email sent to ${customerEmail}`);
+    }
+  } catch (error) {
+    console.error("Failed to send order shipped email:", error);
+  }
+}
+
 module.exports = {
   sendAccountDeletionEmail,
   sendAccountLockedEmail,
   sendBookingAddedEmail,
   sendBookingCancelledEmail,
-  sendBookingConfirmedEmail
+  sendBookingConfirmedEmail,
+  sendOrderConfirmedEmail,
+  sendOrderShippedEmail
 };

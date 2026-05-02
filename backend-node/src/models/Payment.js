@@ -9,7 +9,7 @@ const paymentSchema = new mongoose.Schema(
     currency: { type: String, default: "PKR" },
     status: {
       type: String,
-      enum: ["PENDING", "PAID", "FAILED", "REFUNDED"],
+      enum: ["PENDING", "SENT", "PAID", "FAILED", "REFUNDED"],
       default: "PENDING",
       index: true
     },

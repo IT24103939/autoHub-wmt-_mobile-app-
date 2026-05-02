@@ -6,6 +6,7 @@ import { useShop } from "../../hooks/useShop";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import { garageApiService } from "../../services/GarageApiService";
 import { Garage } from "../../types/models";
+import { ReviewSection } from "../../components/common/ReviewSection";
 
 type Props = NativeStackScreenProps<RootStackParamList, "GarageDetails">;
 
@@ -120,6 +121,8 @@ export function GarageDetailsScreen({ route, navigation }: Props) {
       <Pressable style={[styles.secondaryButton, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => navigation.navigate("SpareParts")}>
         <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Browse Supplier Parts</Text>
       </Pressable>
+
+      <ReviewSection targetId={garage.id} targetType="GARAGE" />
     </ScrollView>
   );
 }

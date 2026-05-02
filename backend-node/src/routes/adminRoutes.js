@@ -185,4 +185,71 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res, next) => {
   }
 });
 
+/**
+ * Get all garages (admin only)
+ * GET /api/admin/garages
+ */
+const Garage = require("../models/Garage");
+router.get("/garages", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const garages = await Garage.find({}).sort({ createdAt: -1 });
+    return res.json(garages.map(g => ({
+      id: g._id.toString(),
+      name: g.name,
+      address: g.address,
+      city: g.city,
+      phone: g.phone,
+      ownerId: g.ownerId,
+      services: g.services || [],
+      createdAt: g.createdAt
+    })));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * Get all appointments (admin only)
+ * GET /api/admin/appointments
+ */
+const Appointment = require("../models/Appointment");
+router.get("/appointments", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const appointments = await Appointment.find({}).sort({ createdAt: -1 });
+    return res.json(appointments.map(a => ({
+      id: a._id.toString(),
+      customerName: a.customerName,
+      customerPhone: a.customerPhone,
+      garageName: a.garageName,
+      service: a.service,
+      appointmentDate: a.appointmentDate,
+      appointmentTime: a.appointmentTime,
+      status: a.status,
+      createdAt: a.createdAt
+    })));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * Get all suppliers (admin only)
+ * GET /api/admin/suppliers
+ */
+router.get("/suppliers", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const suppliers = await User.find({ role: "SUPPLIER" }).select("-password").sort({ createdAt: -1 });
+    return res.json(suppliers.map(s => ({
+      id: s._id.toString(),
+      fullName: s.fullName,
+      email: s.email,
+      phone: s.phone,
+      role: s.role,
+      createdAt: s.createdAt
+    })));
+  } catch (error) {
+    return next(error);
+  }
+});
+
 module.exports = router;

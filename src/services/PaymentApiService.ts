@@ -9,7 +9,7 @@ export interface Payment {
   supplierId: string;
   amount: number;
   currency: string;
-  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+  status: "PENDING" | "SENT" | "PAID" | "FAILED" | "REFUNDED";
   paymentMethod: string;
   transactionId: string;
   reference: string;

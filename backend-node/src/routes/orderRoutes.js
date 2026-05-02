@@ -1,8 +1,11 @@
 const express = require("express");
 const Order = require("../models/Order");
 const SparePart = require("../models/SparePart");
+const User = require("../models/User");
+const Payment = require("../models/Payment");
 const { requireAuth } = require("../middleware/auth");
 const { mapDoc, mapDocs } = require("../utils/mapDoc");
+const emailService = require("../services/emailService");
 
 const router = express.Router();
 
@@ -69,7 +72,11 @@ router.get("/supplier-revenue", requireAuth, async (req, res, next) => {
           },
           pendingOrders: {
             $sum: {
-              $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0]
+              $cond: [
+                { $in: ["$status", ["PENDING", "CONFIRMED", "SHIPPED"]] },
+                1,
+                0
+              ]
             }
           }
         }
@@ -162,8 +169,47 @@ router.put("/:id", requireAuth, async (req, res, next) => {
       return res.status(403).json({ message: "Not allowed" });
     }
 
+    const previousStatus = order.status;
     Object.assign(order, req.body);
     await order.save();
+
+    // Send email notification if status changed to CONFIRMED
+    if (req.body.status === "CONFIRMED" && previousStatus !== "CONFIRMED") {
+      try {
+        const customer = await User.findById(order.customerId);
+        if (customer && customer.email) {
+          await emailService.sendOrderConfirmedEmail(customer.email, customer.fullName, order);
+        }
+      } catch (emailError) {
+        console.error("Error sending order confirmation email:", emailError);
+      }
+    }
+
+    // Send email notification if status changed to SHIPPED
+    if (req.body.status === "SHIPPED" && previousStatus !== "SHIPPED") {
+      try {
+        const customer = await User.findById(order.customerId);
+        if (customer && customer.email) {
+          await emailService.sendOrderShippedEmail(customer.email, customer.fullName, order);
+        }
+      } catch (emailError) {
+        console.error("Error sending order shipped email:", emailError);
+      }
+    }
+
+    // Automatically confirm payment if order is CONFIRMED or SHIPPED
+    if (["CONFIRMED", "SHIPPED"].includes(req.body.status) && !["CONFIRMED", "SHIPPED"].includes(previousStatus)) {
+      try {
+        const payment = await Payment.findOne({ orderId: order._id });
+        if (payment && payment.status !== "PAID") {
+          payment.status = "PAID";
+          payment.paidAt = payment.paidAt || new Date();
+          await payment.save();
+        }
+      } catch (paymentError) {
+        console.error("Error auto-confirming payment:", paymentError);
+      }
+    }
 
     return res.json(mapDoc(order));
   } catch (error) {

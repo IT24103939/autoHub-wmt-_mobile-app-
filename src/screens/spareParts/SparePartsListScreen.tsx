@@ -102,7 +102,7 @@ export function SparePartsListScreen({ navigation }: Props) {
             </Text>
             <Text style={[styles.cardMeta, { color: colors.mutedText }]}>Category: {part.category}</Text>
             <Text style={[styles.cardMeta, { color: colors.mutedText }]}>Stock: {part.quantity}</Text>
-            <Text style={[styles.price, { color: colors.primary }]}>Rs. {part.price.toLocaleString()}</Text>
+            <Text style={[styles.price, { color: colors.primary }]}>Rs. {(part.price ?? 0).toLocaleString()}</Text>
           </Pressable>
         );
       })}

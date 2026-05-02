@@ -21,6 +21,7 @@ export function PaymentMethodsScreen({ navigation }: Props) {
     cardHolder: "",
     expiryMonth: "",
     expiryYear: "",
+    cvv: "",
     bankName: "",
     accountNumber: "",
     accountHolder: "",
@@ -75,6 +76,7 @@ export function PaymentMethodsScreen({ navigation }: Props) {
         cardHolder: selectedType === "CARD" ? formData.cardHolder : undefined,
         expiryMonth: selectedType === "CARD" ? parseInt(formData.expiryMonth) : undefined,
         expiryYear: selectedType === "CARD" ? parseInt(formData.expiryYear) : undefined,
+        cvv: selectedType === "CARD" ? formData.cvv : undefined,
         bankName: selectedType === "BANK_TRANSFER" ? formData.bankName : undefined,
         accountNumber: selectedType === "BANK_TRANSFER" ? formData.accountNumber : undefined,
         accountHolder: selectedType === "BANK_TRANSFER" ? formData.accountHolder : undefined,
@@ -129,6 +131,7 @@ export function PaymentMethodsScreen({ navigation }: Props) {
       cardHolder: "",
       expiryMonth: "",
       expiryYear: "",
+      cvv: "",
       bankName: "",
       accountNumber: "",
       accountHolder: "",
@@ -152,10 +155,14 @@ export function PaymentMethodsScreen({ navigation }: Props) {
 
   const getMethodDisplay = (method: PaymentMethod) => {
     switch (method.type) {
-      case "CARD":
-        return `${method.cardHolder} - ${method.cardNumber}`;
-      case "BANK_TRANSFER":
-        return `${method.bankName} - ${method.accountNumber}`;
+      case "CARD": {
+        const last4 = method.cardNumber?.slice(-4) || "****";
+        return `${method.cardHolder} - **** **** **** ${last4}`;
+      }
+      case "BANK_TRANSFER": {
+        const last4 = method.accountNumber?.slice(-4) || "****";
+        return `${method.bankName} - ****${last4}`;
+      }
       case "WALLET":
         return `${method.walletType} - ${method.walletAddress}`;
       default:
@@ -280,15 +287,15 @@ export function PaymentMethodsScreen({ navigation }: Props) {
             {/* Card Fields */}
             {selectedType === "CARD" && (
               <>
-                <Text style={[styles.label, { color: colors.text }]}>Card Number (Last 4 Digits)</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Card Number</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                  placeholder="1234"
+                  placeholder="1234 5678 1234 5678"
                   placeholderTextColor={colors.mutedText}
                   value={formData.cardNumber}
                   onChangeText={(text) => setFormData({ ...formData, cardNumber: text })}
                   keyboardType="numeric"
-                  maxLength={4}
+                  maxLength={16}
                 />
 
                 <Text style={[styles.label, { color: colors.text }]}>Card Holder Name</Text>
@@ -326,6 +333,18 @@ export function PaymentMethodsScreen({ navigation }: Props) {
                     />
                   </View>
                 </View>
+
+                <Text style={[styles.label, { color: colors.text }]}>CVV</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                  placeholder="123"
+                  placeholderTextColor={colors.mutedText}
+                  value={formData.cvv}
+                  onChangeText={(text) => setFormData({ ...formData, cvv: text })}
+                  keyboardType="numeric"
+                  maxLength={3}
+                  secureTextEntry
+                />
               </>
             )}
 
@@ -341,15 +360,15 @@ export function PaymentMethodsScreen({ navigation }: Props) {
                   onChangeText={(text) => setFormData({ ...formData, bankName: text })}
                 />
 
-                <Text style={[styles.label, { color: colors.text }]}>Account Number (Last 4 Digits)</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Account Number</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-                  placeholder="5678"
+                  placeholder="Full account number"
                   placeholderTextColor={colors.mutedText}
                   value={formData.accountNumber}
                   onChangeText={(text) => setFormData({ ...formData, accountNumber: text })}
                   keyboardType="numeric"
-                  maxLength={4}
+                  maxLength={20}
                 />
 
                 <Text style={[styles.label, { color: colors.text }]}>Account Holder</Text>
