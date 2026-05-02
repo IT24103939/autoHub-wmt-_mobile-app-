@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "AutoHub",
+    "slug": "autohub-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "sdkVersion": "54.0.0",
+    "entryPoint": "index.js",
+    "icon": "./assets/Gemini_Generated_Image_j41w25j41w25j41w.png",
+    "splash": {
+      "image": "./assets/Gemini_Generated_Image_j41w25j41w25j41w.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.anonymous.autohub"
+    }
+  }
+}

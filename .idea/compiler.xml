@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <bytecodeTargetLevel>
+      <module name="Garage_Spare_Parts.app" target="17" />
+      <module name="Garage_Spare_Parts.expo" target="17" />
+      <module name="Garage_Spare_Parts.expo-constants" target="17" />
+      <module name="Garage_Spare_Parts.expo-modules-core" target="17" />
+      <module name="Garage_Spare_Parts.react-native-async-storage_async-storage" target="17" />
+      <module name="Garage_Spare_Parts.react-native-safe-area-context" target="17" />
+      <module name="Garage_Spare_Parts.react-native-screens" target="17" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: wmt-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: mongodb
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - wmt-network
+
+  mongoexpress:
+    image: mongo-express:1.0.0
+    container_name: wmt-mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://root:mongodb@mongodb:27017/
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: mongodb
+    depends_on:
+      - mongodb
+    networks:
+      - wmt-network
+
+volumes:
+  mongodb_data:
+  mongodb_config:
+
+networks:
+  wmt-network:
+    driver: bridge
