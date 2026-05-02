@@ -33,6 +33,7 @@ interface ShopContextValue {
   createGarage: (ownerId: string, garage: Partial<Garage>) => Promise<Garage>;
   updateGarage: (garageId: string, updates: Partial<Garage>) => Promise<void>;
   setSpareParts: (parts: SparePart[]) => void;
+  markNotificationsAsRead: () => void;
 }
 
 export const ShopContext = createContext<ShopContextValue | undefined>(undefined);
@@ -306,6 +307,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     [cartEntries]
   );
 
+  const markNotificationsAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
   const value = useMemo(
     () => ({
       garages: garagesList,
@@ -330,7 +335,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       confirmAppointment,
       updateGarage,
       createGarage,
-      setSpareParts: setSparePartsList
+      setSpareParts: setSparePartsList,
+      markNotificationsAsRead
     }),
     [
       garagesList,

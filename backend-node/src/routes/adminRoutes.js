@@ -6,6 +6,10 @@ const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
+router.get("/health", (req, res) => {
+  res.json({ status: "admin ok" });
+});
+
 /**
  * Middleware to check if user is admin
  */

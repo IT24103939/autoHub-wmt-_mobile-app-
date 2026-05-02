@@ -304,6 +304,8 @@ function OwnerAccountStack() {
         component={OwnerAccountScreen}
         options={{ title: "Account Settings" }}
       />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
+      <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ title: "Notifications" }} />
     </Stack.Navigator>
   );
 }
@@ -432,6 +434,8 @@ function SupplierAccountStack() {
         component={SupplierAccountScreen}
         options={{ title: "Account Settings" }}
       />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
+      <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ title: "Notifications" }} />
     </Stack.Navigator>
   );
 }
@@ -528,6 +532,7 @@ function AdminHomeStack() {
         component={AdminDashboardScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ title: "Notifications" }} />
     </Stack.Navigator>
   );
 }
@@ -552,6 +557,7 @@ function AdminAccountStack() {
         component={AdminAccountScreen}
         options={{ title: "Account Settings" }}
       />
+      <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ title: "Notifications" }} />
     </Stack.Navigator>
   );
 }

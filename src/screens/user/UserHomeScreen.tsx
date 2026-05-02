@@ -11,7 +11,8 @@ type Props = NativeStackScreenProps<RootStackParamList, "UserHome">;
 
 export function UserHomeScreen({ navigation }: Props) {
   const { colors } = useAppTheme();
-  const { spareParts, garages } = useShop();
+  const { spareParts, garages, notifications, markNotificationsAsRead } = useShop();
+  const unreadCount = notifications.filter(n => !n.read).length;
   const { currentUser } = useAuth();
 
   // Get featured spare parts (first 2)
@@ -35,8 +36,19 @@ export function UserHomeScreen({ navigation }: Props) {
               <Text style={[styles.brandName, { color: colors.primary }]}>🚗 AutoHub</Text>
               <Text style={[styles.brandSubtitle, { color: colors.text }]}>Your Garage & Spare Parts Solution</Text>
             </View>
-            <Pressable style={[styles.notificationIcon, { backgroundColor: colors.primary }]}>
+            <Pressable 
+              style={[styles.notificationIcon, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                markNotificationsAsRead();
+                navigation.navigate("AccountTab", { screen: "NotificationsCenter" });
+              }}
+            >
               <MaterialCommunityIcons name="bell" size={20} color={colors.primaryText} />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+                </View>
+              )}
             </Pressable>
           </View>
         </View>
@@ -182,8 +194,28 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    position: "relative"
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#FF3B30",
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 2
+  },
+  badgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold"
   },
   searchSection: {
     padding: 16,

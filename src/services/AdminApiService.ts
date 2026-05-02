@@ -40,7 +40,7 @@ class AdminApiServiceClass {
   ): Promise<UserManagementData[]> {
     try {
       const response = await ApiClient.get<any>(`/admin/users?page=${page}&limit=${limit}`);
-      return response;
+      return response.users || [];
     } catch (error) {
       errorLogger.log(error, "network", "/admin/users");
       console.error("Failed to fetch users:", error);

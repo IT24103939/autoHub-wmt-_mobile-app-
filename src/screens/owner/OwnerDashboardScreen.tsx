@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { View, Text, StyleSheet, Pressable, Image, ScrollView, Modal, Alert, StatusBar } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/AppNavigator";
@@ -11,16 +12,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 type Props = NativeStackScreenProps<RootStackParamList, "OwnerHome">;
 
 type Tile = {
-  emoji: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
   label: string;
   description: string;
   onPress: () => void;
-  accent?: boolean;
+  color: string;
 };
 
 export function OwnerDashboardScreen({ navigation }: Props) {
   const { currentUser, logout } = useAuth();
-  const { appointments, garages, reviews, confirmAppointment } = useShop();
+  const { appointments, garages, reviews, confirmAppointment, notifications, markNotificationsAsRead } = useShop();
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -48,6 +49,8 @@ export function OwnerDashboardScreen({ navigation }: Props) {
       subtitle: `${appointment.garageName} • ${appointment.appointmentDate} ${appointment.appointmentTime}`,
       status: appointment.status
     }));
+  
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const ownerServicesCount = ownerGarages.reduce(
     (total, garage) => total + garage.services.length,
@@ -59,37 +62,48 @@ export function OwnerDashboardScreen({ navigation }: Props) {
 
   const tiles: Tile[] = [
     {
-      emoji: "🏪",
+      icon: "storefront-outline",
       label: "Edit Garage",
-      description: "Update location, hours, services and details",
+      description: "Hours, services & details",
       onPress: () => navigation.navigate("GarageEdit"),
-      accent: true
+      color: "#4F46E5"
     },
     {
-      emoji: "⚙️",
-      label: "Account Settings",
-      description: "Update your name, phone and password",
-      onPress: () => navigation.navigate("AccountTab" as any)
+      icon: "cog-outline",
+      label: "Settings",
+      description: "Account & password",
+      onPress: () => navigation.navigate("AccountTab" as any),
+      color: "#10B981"
     },
     {
-      emoji: "👤",
+      icon: "account-circle-outline",
       label: "Profile",
-      description: "View your account information",
-      onPress: () => navigation.navigate("BrowseTab" as any)
+      description: "Personal information",
+      onPress: () => navigation.navigate("BrowseTab" as any),
+      color: "#F59E0B"
     },
     {
-      emoji: "🔔",
-      label: "Notifications",
-      description: "Stay updated on orders and requests",
-      onPress: () => setIsNotificationsModalVisible(true)
+      icon: "bell-outline",
+      label: "Alerts",
+      description: "System notifications",
+      onPress: () => {
+        markNotificationsAsRead();
+        setIsNotificationsModalVisible(true);
+      },
+      color: "#EC4899"
     }
   ];
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* Dynamic Header */}
-      <View style={[styles.header, { paddingTop: statusBarOffset + 8 }]}>
-        <Text style={[styles.dashboardTitle, { color: colors.text }]}>Dashboard</Text>
+      <View style={[styles.header, { paddingTop: statusBarOffset + 12 }]}>
+        <View>
+          <Text style={[styles.dashboardTitle, { color: colors.text }]}>Dashboard</Text>
+          <Text style={[styles.dateText, { color: colors.mutedText }]}>
+            {new Date().toLocaleDateString("en-US", { weekday: 'long', month: 'short', day: 'numeric' })}
+          </Text>
+        </View>
 
         <View style={styles.headerIcons}>
           <Pressable
@@ -97,25 +111,17 @@ export function OwnerDashboardScreen({ navigation }: Props) {
               styles.iconButton,
               { borderColor: colors.border, backgroundColor: colors.card }
             ]}
-            onPress={() => setIsNotificationsModalVisible(true)}
-            accessibilityLabel="Open notifications"
+            onPress={() => {
+              markNotificationsAsRead();
+              navigation.navigate("AccountTab", { screen: "NotificationsCenter" });
+            }}
           >
-            <Text style={styles.iconEmoji}>🔔</Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.iconButton,
-              { borderColor: colors.border, backgroundColor: colors.card }
-            ]}
-            onPress={() => navigation.navigate("BrowseTab" as any)}
-            accessibilityLabel="Open profile"
-          >
-            <Image
-              source={require("../../assets/icons/profile-icon.png")}
-              style={styles.profileIcon}
-              resizeMode="contain"
-            />
+            <MaterialCommunityIcons name="bell-outline" size={22} color={colors.text} />
+            {unreadCount > 0 && (
+              <View style={[styles.notifBadge, { backgroundColor: colors.error }]}>
+                <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+              </View>
+            )}
           </Pressable>
         </View>
       </View>
@@ -133,54 +139,23 @@ export function OwnerDashboardScreen({ navigation }: Props) {
 
         {/* Stats row */}
         <View style={styles.statsRow}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.statBox,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: pressed ? 0.8 : 1
-              }
-            ]}
-            onPress={() => setIsBookingsModalVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Open bookings details"
-          >
-            <Text style={[styles.statValue, { color: colors.primary }]}>{ownerAppointments.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>Bookings</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.statBox,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: pressed ? 0.8 : 1
-              }
-            ]}
-            onPress={() => setIsServicesModalVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Open services details"
-          >
-            <Text style={[styles.statValue, { color: colors.primary }]}>{ownerServicesCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>Services</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.statBox,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: pressed ? 0.8 : 1
-              }
-            ]}
-            onPress={() => setIsReviewsModalVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Open reviews details"
-          >
-            <Text style={[styles.statValue, { color: colors.primary }]}>{ownerReviews.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>Reviews</Text>
-          </Pressable>
+          {[
+            { label: "Bookings", value: ownerAppointments.length, icon: "calendar-check", color: "#6366F1", onPress: () => setIsBookingsModalVisible(true) },
+            { label: "Services", value: ownerServicesCount, icon: "tools", color: "#10B981", onPress: () => setIsServicesModalVisible(true) },
+            { label: "Reviews", value: ownerReviews.length, icon: "star-face", color: "#F59E0B", onPress: () => setIsReviewsModalVisible(true) }
+          ].map((item, idx) => (
+            <Pressable
+              key={idx}
+              style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={item.onPress}
+            >
+              <View style={[styles.statIconCircle, { backgroundColor: item.color + "15" }]}>
+                <MaterialCommunityIcons name={item.icon as any} size={20} color={item.color} />
+              </View>
+              <Text style={[styles.statValue, { color: colors.text }]}>{item.value}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedText }]}>{item.label}</Text>
+            </Pressable>
+          ))}
         </View>
 
         {/* Feature tiles */}
@@ -189,15 +164,16 @@ export function OwnerDashboardScreen({ navigation }: Props) {
           {tiles.map((tile) => (
             <Pressable
               key={tile.label}
-              style={[
-                styles.tile,
-                { backgroundColor: colors.card, borderColor: tile.accent ? colors.primary : colors.border }
-              ]}
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={tile.onPress}
             >
-              <Text style={styles.tileEmoji}>{tile.emoji}</Text>
-              <Text style={[styles.tileLabel, { color: colors.text }]}>{tile.label}</Text>
-              <Text style={[styles.tileDesc, { color: colors.mutedText }]}>{tile.description}</Text>
+              <View style={[styles.tileIconCircle, { backgroundColor: tile.color + "10" }]}>
+                <MaterialCommunityIcons name={tile.icon} size={24} color={tile.color} />
+              </View>
+              <View>
+                <Text style={[styles.tileLabel, { color: colors.text }]}>{tile.label}</Text>
+                <Text style={[styles.tileDesc, { color: colors.mutedText }]}>{tile.description}</Text>
+              </View>
             </Pressable>
           ))}
         </View>
@@ -554,32 +530,46 @@ const styles = StyleSheet.create({
     zIndex: 10
   },
   dashboardTitle: {
-    fontSize: 24,
-    fontWeight: "800"
+    fontSize: 32,
+    fontWeight: "900",
+    letterSpacing: -1
   },
   headerIcons: {
     flexDirection: "row",
-    gap: 10
+    gap: 12,
+    alignItems: "center"
   },
   iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 1.5,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3
+    position: "relative"
   },
-  iconEmoji: {
-    fontSize: 18
+  notifBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#FF4444",
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "white"
+  },
+  notifBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "800"
   },
   profileIcon: {
-    width: 20,
-    height: 20
+    width: 22,
+    height: 22
   },
   welcomeCard: {
     borderRadius: 16,
@@ -597,8 +587,14 @@ const styles = StyleSheet.create({
   welcomeName: {
     color: "#ffffff",
     fontSize: 22,
-    fontWeight: "800",
-    marginBottom: 4
+    fontWeight: "900",
+    marginBottom: 6,
+    letterSpacing: -0.5
+  },
+  dateText: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 2
   },
   welcomeSub: {
     color: "rgba(255,255,255,0.8)",
@@ -617,13 +613,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: "800"
+    fontSize: 24,
+    fontWeight: "900",
+    marginTop: 8
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
     marginTop: 2
+  },
+  statIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center"
   },
   sectionTitle: {
     fontSize: 16,
@@ -637,10 +641,20 @@ const styles = StyleSheet.create({
     marginBottom: 24
   },
   tile: {
-    width: "47%",
+    width: "48%",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    justifyContent: "space-between",
+    minHeight: 140
+  },
+  tileIconCircle: {
+    width: 48,
+    height: 48,
     borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 16
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12
   },
   tileEmoji: {
     fontSize: 28,

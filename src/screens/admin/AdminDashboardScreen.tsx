@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   View,
   ScrollView,
@@ -17,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { ApiClient } from "../../services/ApiClient";
+import { useShop } from "../../hooks/useShop";
 
 interface SystemStats {
   totalUsers: number;
@@ -32,7 +34,10 @@ export function AdminDashboardScreen() {
   const colors = theme.colors;
   const navigation = useNavigation<AdminNavigationProp>();
   const { currentUser } = useAuth();
+  const { notifications, markNotificationsAsRead } = useShop();
   const insets = useSafeAreaInsets();
+  
+  const unreadCount = notifications.filter(n => !n.read).length;
   const [stats, setStats] = useState<SystemStats>({
     totalUsers: 0,
     totalGarages: 0,
@@ -76,68 +81,70 @@ export function AdminDashboardScreen() {
     label,
     value,
     color,
+    icon
   }: {
     label: string;
     value: number;
     color: string;
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
   }) => (
     <View
       style={[
         styles.statCard,
-        { backgroundColor: color, borderColor: colors.border },
+        { backgroundColor: colors.card, borderColor: colors.border },
       ]}
     >
-      <Text style={[styles.statValue, { color: colors.background }]}>
-        {value}
-      </Text>
-      <Text style={[styles.statLabel, { color: colors.background }]}>
-        {label}
-      </Text>
+      <View style={[styles.statIconCircle, { backgroundColor: color + "15" }]}>
+        <MaterialCommunityIcons name={icon} size={24} color={color} />
+      </View>
+      <View>
+        <Text style={[styles.statValue, { color: colors.text }]}>
+          {value}
+        </Text>
+        <Text style={[styles.statLabel, { color: colors.mutedText }]}>
+          {label}
+        </Text>
+      </View>
     </View>
   );
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {/* Notification icon */}
-      <Pressable
-        style={[
-          styles.notificationIconButton,
-          { borderColor: colors.border, backgroundColor: colors.card }
-        ]}
-        onPress={() => setIsNotificationsModalVisible(true)}
-        accessibilityLabel="Open notifications"
-      >
-        <Text style={styles.notificationIconText}>🔔</Text>
-      </Pressable>
+      {/* Dynamic Header */}
+      <View style={[styles.dashboardHeader, { paddingTop: statusBarOffset + 12 }]}>
+        <View>
+          <Text style={[styles.dashboardTitle, { color: colors.text }]}>Admin Panel</Text>
+          <Text style={[styles.dateText, { color: colors.mutedText }]}>
+            {new Date().toLocaleDateString("en-US", { weekday: 'long', month: 'short', day: 'numeric' })}
+          </Text>
+        </View>
 
-      {/* Profile icon */}
-      <Pressable
-        style={[
-          styles.profileIconButton,
-          { borderColor: colors.border, backgroundColor: colors.card }
-        ]}
-        onPress={() => navigation.navigate("BrowseTab" as any)}
-        accessibilityLabel="Open profile"
-      >
-        <Image
-          source={require("../../assets/icons/profile-icon.png")}
-          style={styles.profileIconImage}
-          resizeMode="contain"
-        />
-      </Pressable>
+        <View style={styles.headerIcons}>
+          <Pressable
+            style={[
+              styles.iconButton,
+              { borderColor: colors.border, backgroundColor: colors.card }
+            ]}
+            onPress={() => {
+              markNotificationsAsRead();
+              navigation.navigate("AccountTab", { screen: "NotificationsCenter" });
+            }}
+          >
+            <MaterialCommunityIcons name="bell-outline" size={22} color={colors.text} />
+            {unreadCount > 0 && (
+              <View style={[styles.notifBadge, { backgroundColor: colors.error }]}>
+                <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
+      </View>
 
       <ScrollView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={[styles.contentContainer, { paddingTop: headerIconTop + 60 }]}
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
       >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          Admin Dashboard
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          System Overview
-        </Text>
-      </View>
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} />
@@ -147,26 +154,30 @@ export function AdminDashboardScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statsRow}>
               <StatCard
-                label="Total Users"
+                label="Users"
                 value={stats.totalUsers}
-                color={colors.primary}
+                color="#4F46E5"
+                icon="account-group-outline"
               />
               <StatCard
                 label="Garages"
                 value={stats.totalGarages}
-                color={colors.success}
+                color="#10B981"
+                icon="storefront-outline"
               />
             </View>
             <View style={styles.statsRow}>
               <StatCard
-                label="Appointments"
+                label="Bookings"
                 value={stats.totalAppointments}
-                color={colors.warning}
+                color="#F59E0B"
+                icon="calendar-check-outline"
               />
               <StatCard
                 label="Suppliers"
                 value={stats.totalSuppliers}
-                color={colors.info}
+                color="#EC4899"
+                icon="truck-delivery-outline"
               />
             </View>
           </View>
@@ -177,42 +188,25 @@ export function AdminDashboardScreen() {
               Management
             </Text>
 
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.primary, borderColor: colors.border },
-              ]}
-              onPress={() => navigation.navigate("AdminUsers")}
-            >
-              <Text style={styles.actionButtonText}>👥 Manage Users</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.success, borderColor: colors.border },
-              ]}
-            >
-              <Text style={styles.actionButtonText}>🏪 Manage Garages</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.warning, borderColor: colors.border },
-              ]}
-            >
-              <Text style={styles.actionButtonText}>📅 View Appointments</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: colors.info, borderColor: colors.border },
-              ]}
-            >
-              <Text style={styles.actionButtonText}>📦 Manage Suppliers</Text>
-            </TouchableOpacity>
+            <View style={styles.actionGrid}>
+              {[
+                { label: "Users", icon: "account-group", color: "#4F46E5", onPress: () => navigation.navigate("UsersTab") },
+                { label: "Garages", icon: "store-cog", color: "#10B981", onPress: () => {} },
+                { label: "Bookings", icon: "calendar-month", color: "#F59E0B", onPress: () => {} },
+                { label: "Suppliers", icon: "account-hard-hat", color: "#EC4899", onPress: () => {} }
+              ].map((item, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.actionGridItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={item.onPress}
+                >
+                  <View style={[styles.actionIconCircle, { backgroundColor: item.color + "15" }]}>
+                    <MaterialCommunityIcons name={item.icon as any} size={28} color={item.color} />
+                  </View>
+                  <Text style={[styles.actionLabel, { color: colors.text }]}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* System Info */}
@@ -281,38 +275,60 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
     borderWidth: 1,
   },
+  statIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   statValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
+    fontWeight: "600",
   },
   actionsSection: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 16,
+  },
+  actionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  actionGridItem: {
+    width: "48%",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    justifyContent: "center",
+  },
+  actionIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
   },
-  actionButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "white",
+  actionLabel: {
+    fontSize: 14,
+    fontWeight: "700",
   },
   infoSection: {
     borderRadius: 12,
@@ -333,45 +349,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  profileIconButton: {
-    position: "absolute",
-    top: 50,
-    right: 16,
+  dashboardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  dashboardTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    letterSpacing: -1,
+  },
+  dateText: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  headerIcons: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
+  iconButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5
+    position: "relative",
   },
-  notificationIconButton: {
+  notifBadge: {
     position: "absolute",
-    top: 50,
-    right: 60,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
+    top: -5,
+    right: -5,
+    backgroundColor: "#FF4444",
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "white",
   },
-  notificationIconText: {
-    fontSize: 18
-  },
-  profileIconImage: {
-    width: 20,
-    height: 20
+  notifBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "800",
   },
 });

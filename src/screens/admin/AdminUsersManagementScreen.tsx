@@ -42,8 +42,8 @@ export function AdminUsersManagementScreen() {
     try {
       setLoading(true);
       const response = await AdminApiService.getAllUsers(1, 100);
-      // Response is already the array, not wrapped in an object
-      setUsers(Array.isArray(response) ? response : response.users || []);
+      console.log("[AdminUsers] Fetched users count:", response?.length);
+      setUsers(response || []);
     } catch (error) {
       Alert.alert("Error", "Failed to load users");
       console.error(error);

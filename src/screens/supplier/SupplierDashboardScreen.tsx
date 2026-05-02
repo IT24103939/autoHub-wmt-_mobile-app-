@@ -13,17 +13,17 @@ import SupplierApiService from "../../services/SupplierApiService";
 type Props = NativeStackScreenProps<RootStackParamList, "SupplierHome">;
 
 type Tile = {
-  emoji: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
   label: string;
   description: string;
   onPress: () => void;
-  accent?: boolean;
+  color: string;
 };
 
 export function SupplierDashboardScreen({ navigation }: Props) {
-  const { currentUser, logout } = useAuth();
-  const { spareParts, setSpareParts } = useShop();
+  const { spareParts, setSpareParts, notifications, markNotificationsAsRead } = useShop();
   const { colors } = useAppTheme();
+  const unreadCount = notifications.filter(n => !n.read).length;
   const [isInventoryModalVisible, setIsInventoryModalVisible] = useState(false);
   const [isOrdersModalVisible, setIsOrdersModalVisible] = useState(false);
   const [isAnalyticsModalVisible, setIsAnalyticsModalVisible] = useState(false);
@@ -129,53 +129,81 @@ export function SupplierDashboardScreen({ navigation }: Props) {
 
   const tiles: Tile[] = [
     {
-      emoji: "➕",
-      label: "Add Spare Parts",
-      description: "Add new spare parts to inventory",
+      icon: "plus-circle-outline",
+      label: "Add Part",
+      description: "List new inventory",
       onPress: () => navigation.navigate("AddSparePart"),
-      accent: true
+      color: "#4F46E5"
     },
     {
-      emoji: "📦",
-      label: "My Inventory",
-      description: "Manage spare parts and stock",
+      icon: "package-variant-closed",
+      label: "Inventory",
+      description: "Manage stock levels",
       onPress: () => setIsInventoryModalVisible(true),
-      accent: true
+      color: "#10B981"
     },
     {
-      emoji: "🛒",
+      icon: "cart-outline",
       label: "Orders",
-      description: "View and process incoming orders",
-      onPress: () => setIsOrdersModalVisible(true)
+      description: "Incoming requests",
+      onPress: () => setIsOrdersModalVisible(true),
+      color: "#F59E0B"
     },
     {
-      emoji: "💳",
+      icon: "cash-multiple",
       label: "Payments",
-      description: "Track pending payments to receive",
-      onPress: () => setIsPaymentsModalVisible(true)
+      description: "Track earnings",
+      onPress: () => setIsPaymentsModalVisible(true),
+      color: "#10B981"
     },
     {
-      emoji: "📊",
+      icon: "chart-line",
       label: "Analytics",
-      description: "Track sales and performance",
-      onPress: () => setIsAnalyticsModalVisible(true)
+      description: "Sales performance",
+      onPress: () => setIsAnalyticsModalVisible(true),
+      color: "#EC4899"
     },
     {
-      emoji: "�",
-      label: "Customers",
-      description: "View users and garage owners",
-      onPress: () => setIsCustomersModalVisible(true)
-    },
-    {
-      emoji: "�👤",
-      label: "Profile",
-      description: "View and edit your account details",
-      onPress: () => navigation.navigate("AccountTab" as any)
+      icon: "account-cog-outline",
+      label: "Settings",
+      description: "Account & Profile",
+      onPress: () => navigation.navigate("AccountTab" as any),
+      color: "#6B7280"
     }
   ];
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: 60 }]}>
+        <View>
+          <Text style={[styles.dashboardTitle, { color: colors.text }]}>Supplier Hub</Text>
+          <Text style={[styles.dateText, { color: colors.mutedText }]}>
+            {new Date().toLocaleDateString("en-US", { weekday: 'long', month: 'short', day: 'numeric' })}
+          </Text>
+        </View>
+
+        <View style={styles.headerIcons}>
+          <Pressable
+            style={[
+              styles.iconButton,
+              { borderColor: colors.border, backgroundColor: colors.card }
+            ]}
+            onPress={() => {
+              markNotificationsAsRead();
+              navigation.navigate("AccountTab", { screen: "NotificationsCenter" });
+            }}
+          >
+            <MaterialCommunityIcons name="bell-outline" size={22} color={colors.text} />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
+      </View>
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Welcome card */}
         <View style={[styles.welcomeCard, { backgroundColor: colors.primary }]}>
@@ -186,18 +214,22 @@ export function SupplierDashboardScreen({ navigation }: Props) {
 
         {/* Stats row */}
         <View style={styles.statsRow}>
-          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>{supplierParts.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>Parts</Text>
-          </View>
-          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>{supplierStats.totalOrders}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>Orders</Text>
-          </View>
-          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>Rs {Math.round(supplierStats.totalRevenue)}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>Revenue</Text>
-          </View>
+          {[
+            { label: "Parts", value: supplierParts.length, icon: "package-variant", color: "#6366F1" },
+            { label: "Orders", value: supplierStats.totalOrders, icon: "cart-outline", color: "#10B981" },
+            { label: "Revenue", value: `Rs ${Math.round(supplierStats.totalRevenue)}`, icon: "currency-usd", color: "#F59E0B" }
+          ].map((item, idx) => (
+            <View
+              key={idx}
+              style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
+              <View style={[styles.statIconCircle, { backgroundColor: item.color + "15" }]}>
+                <MaterialCommunityIcons name={item.icon as any} size={20} color={item.color} />
+              </View>
+              <Text style={[styles.statValue, { color: colors.text }]}>{item.value}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedText }]}>{item.label}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Feature tiles */}
@@ -206,15 +238,16 @@ export function SupplierDashboardScreen({ navigation }: Props) {
           {tiles.map((tile) => (
             <Pressable
               key={tile.label}
-              style={[
-                styles.tile,
-                { backgroundColor: colors.card, borderColor: tile.accent ? colors.primary : colors.border }
-              ]}
+              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={tile.onPress}
             >
-              <Text style={styles.tileEmoji}>{tile.emoji}</Text>
-              <Text style={[styles.tileLabel, { color: colors.text }]}>{tile.label}</Text>
-              <Text style={[styles.tileDesc, { color: colors.mutedText }]}>{tile.description}</Text>
+              <View style={[styles.tileIconCircle, { backgroundColor: tile.color + "10" }]}>
+                <MaterialCommunityIcons name={tile.icon} size={24} color={tile.color} />
+              </View>
+              <View>
+                <Text style={[styles.tileLabel, { color: colors.text }]}>{tile.label}</Text>
+                <Text style={[styles.tileDesc, { color: colors.mutedText }]}>{tile.description}</Text>
+              </View>
             </Pressable>
           ))}
         </View>
@@ -586,26 +619,58 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     paddingBottom: 40
   },
-  profileIconButton: {
-    position: "absolute",
-    top: 50,
-    right: 16,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  dashboardTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+  dateText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  headerIcons: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
+  iconButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5
+    position: "relative",
   },
-  profileIconImage: {
-    width: 20,
-    height: 20
+  notifBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#FF4444",
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "white",
+  },
+  notifBadgeText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "800",
   },
   welcomeCard: {
     borderRadius: 16,
@@ -643,13 +708,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: "800"
+    fontSize: 18,
+    fontWeight: "900",
+    marginTop: 8
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
     marginTop: 2
+  },
+  statIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center"
   },
   sectionTitle: {
     fontSize: 16,
@@ -663,14 +736,19 @@ const styles = StyleSheet.create({
     marginBottom: 24
   },
   tile: {
-    width: "47%",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 16
+    width: "48%",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    justifyContent: "center",
   },
-  tileEmoji: {
-    fontSize: 28,
-    marginBottom: 8
+  tileIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
   },
   tileLabel: {
     fontSize: 14,
