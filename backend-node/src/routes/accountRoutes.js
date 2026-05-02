@@ -21,6 +21,27 @@ router.get("/me", async (req, res, next) => {
   }
 });
 
+router.post("/setup-email", async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const user = await User.findById(req.authUserId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (user.email) return res.status(400).json({ message: "Email already set for this account" });
+
+    const existingEmail = await User.findOne({ email: String(email).toLowerCase().trim() });
+    if (existingEmail) return res.status(409).json({ message: "Email already in use by another account" });
+
+    user.email = String(email).toLowerCase().trim();
+    await user.save();
+    return res.json(mapDoc(user));
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.put("/me", async (req, res, next) => {
   try {
     const { fullName, phone, currentPassword, newPassword } = req.body;

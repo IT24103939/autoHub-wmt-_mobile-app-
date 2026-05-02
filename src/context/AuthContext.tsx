@@ -19,11 +19,13 @@ interface AuthContextValue {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
   updateAccount: (payload: UpdateAccountPayload) => Promise<void>;
+  setupEmail: (email: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
 
 interface RegisterPayload {
   fullName: string;
+  email: string;
   phone: string;
   password: string;
   role: Role;
@@ -73,19 +75,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const user: AppUser = {
       id: response.user.id,
       fullName: response.user.fullName,
+      email: response.user.email || "",
       phone: response.user.phone,
       role: response.user.role as Role
     };
     await persistSession(user, response.token);
   };
 
-  const register = async ({ fullName, phone, password, role }: RegisterPayload) => {
-    const response = await authApiService.register({ fullName, phone, password, role });
+  const register = async ({ fullName, email, phone, password, role }: RegisterPayload) => {
+    const response = await authApiService.register({ fullName, email, phone, password, role });
     // Auto-login after register by calling login
     const loginResponse = await authApiService.login({ phone, password });
     const user: AppUser = {
       id: response.id,
       fullName: response.fullName,
+      email: response.email || email,
       phone: response.phone,
       role: response.role as Role
     };
@@ -104,10 +108,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updatedUser: AppUser = {
       id: updated.id,
       fullName: updated.fullName,
+      email: updated.email || currentUser.email,
       phone: updated.phone,
       role: updated.role as Role
     };
     // Refresh stored session with updated user info
+    const stored = await AsyncStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+    const token = stored ? (JSON.parse(stored) as StoredSession).token : "demo-token-" + updated.id;
+    await persistSession(updatedUser, token);
+  };
+
+  const setupEmail = async (email: string) => {
+    if (!currentUser) throw new Error("Not authenticated");
+    const updated = await authApiService.setupEmail(email);
+    const updatedUser: AppUser = {
+      id: updated.id,
+      fullName: updated.fullName,
+      email: updated.email,
+      phone: updated.phone,
+      role: updated.role as Role
+    };
     const stored = await AsyncStorage.getItem(AUTH_SESSION_STORAGE_KEY);
     const token = stored ? (JSON.parse(stored) as StoredSession).token : "demo-token-" + updated.id;
     await persistSession(updatedUser, token);
@@ -130,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       updateAccount,
+      setupEmail,
       deleteAccount
     }),
     [currentUser, hasHydrated]

@@ -1,7 +1,9 @@
 const express = require("express");
 const Appointment = require("../models/Appointment");
+const User = require("../models/User");
 const { requireAuth } = require("../middleware/auth");
 const { mapDoc, mapDocs } = require("../utils/mapDoc");
+const { sendBookingAddedEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail } = require("../services/emailService");
 
 const router = express.Router();
 
@@ -16,6 +18,22 @@ router.post("/", async (req, res, next) => {
     };
 
     const appointment = await Appointment.create(payload);
+
+    try {
+      const customer = await User.findById(appointment.customerId);
+      const owner = await User.findById(appointment.garageOwnerId);
+      if (customer && owner) {
+        // Run email sending asynchronously without blocking the response
+        sendBookingAddedEmail(
+          customer.email, customer.fullName,
+          owner.email, owner.fullName,
+          appointment
+        ).catch(err => console.error("Async email failed:", err));
+      }
+    } catch (emailErr) {
+      console.error("Failed to send added email:", emailErr);
+    }
+
     return res.status(201).json(mapDoc(appointment));
   } catch (error) {
     return next(error);
@@ -100,6 +118,36 @@ router.patch("/:id/status", async (req, res, next) => {
       return res.status(403).json({ message: "Not allowed" });
     }
 
+    if (status === "CANCELLED" && row.status !== "CANCELLED") {
+      try {
+        const customer = await User.findById(row.customerId);
+        const owner = await User.findById(row.garageOwnerId);
+        if (customer && owner) {
+          sendBookingCancelledEmail(
+            customer.email, customer.fullName,
+            owner.email, owner.fullName,
+            row
+          ).catch(err => console.error("Async email failed:", err));
+        }
+      } catch (emailErr) {
+        console.error("Failed to send cancelled email:", emailErr);
+      }
+    }
+
+    if (status === "CONFIRMED" && row.status !== "CONFIRMED") {
+      try {
+        const customer = await User.findById(row.customerId);
+        if (customer) {
+          sendBookingConfirmedEmail(
+            customer.email, customer.fullName,
+            row
+          ).catch(err => console.error("Async email failed:", err));
+        }
+      } catch (emailErr) {
+        console.error("Failed to send confirmed email:", emailErr);
+      }
+    }
+
     row.status = status;
     await row.save();
     return res.json(mapDoc(row));
@@ -120,6 +168,21 @@ router.delete("/:id", async (req, res, next) => {
     }
 
     await Appointment.findByIdAndDelete(req.params.id);
+
+    try {
+      const customer = await User.findById(row.customerId);
+      const owner = await User.findById(row.garageOwnerId);
+      if (customer && owner) {
+        sendBookingCancelledEmail(
+          customer.email, customer.fullName,
+          owner.email, owner.fullName,
+          row
+        ).catch(err => console.error("Async email failed:", err));
+      }
+    } catch (emailErr) {
+      console.error("Failed to send cancelled email:", emailErr);
+    }
+
     return res.status(204).send();
   } catch (error) {
     return next(error);

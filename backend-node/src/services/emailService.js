@@ -138,7 +138,205 @@ async function sendAccountLockedEmail(email, fullName, reason, adminName) {
   }
 }
 
+/**
+ * Send booking confirmation email to customer and owner
+ */
+async function sendBookingAddedEmail(customerEmail, customerName, ownerEmail, ownerName, bookingDetails) {
+  try {
+    const { garageName, service, appointmentDate, appointmentTime } = bookingDetails;
+    
+    // Customer Email
+    const customerHtml = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #4CAF50;">Booking Confirmed</h2>
+            <p>Dear ${customerName},</p>
+            <p>Your booking at <strong>${garageName}</strong> has been received successfully.</p>
+            <ul>
+              <li><strong>Service:</strong> ${service}</li>
+              <li><strong>Date:</strong> ${appointmentDate}</li>
+              <li><strong>Time:</strong> ${appointmentTime}</li>
+            </ul>
+            <p>Thank you for using WMT Mobile App.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Owner Email
+    const ownerHtml = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #2196F3;">New Booking Received</h2>
+            <p>Dear ${ownerName},</p>
+            <p>You have received a new booking from <strong>${customerName}</strong>.</p>
+            <ul>
+              <li><strong>Service:</strong> ${service}</li>
+              <li><strong>Date:</strong> ${appointmentDate}</li>
+              <li><strong>Time:</strong> ${appointmentTime}</li>
+            </ul>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const emailPromises = [];
+
+    if (customerEmail && customerEmail.trim() !== "") {
+      emailPromises.push(
+        transporter.sendMail({
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+          to: customerEmail,
+          subject: "Booking Confirmed - WMT Mobile App",
+          html: customerHtml
+        }).catch(err => console.error("Failed to send email to customer:", err))
+      );
+    }
+
+    if (ownerEmail && ownerEmail.trim() !== "") {
+      emailPromises.push(
+        transporter.sendMail({
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+          to: ownerEmail,
+          subject: "New Booking Received - WMT Mobile App",
+          html: ownerHtml
+        }).catch(err => console.error("Failed to send email to owner:", err))
+      );
+    }
+
+    if (emailPromises.length > 0) {
+      await Promise.all(emailPromises);
+    }
+  } catch (error) {
+    console.error("Failed to send booking added emails:", error);
+  }
+}
+
+/**
+ * Send booking cancellation email to customer and owner
+ */
+async function sendBookingCancelledEmail(customerEmail, customerName, ownerEmail, ownerName, bookingDetails) {
+  try {
+    const { garageName, service, appointmentDate, appointmentTime } = bookingDetails;
+    
+    // Customer Email
+    const customerHtml = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #f44336;">Booking Cancelled</h2>
+            <p>Dear ${customerName},</p>
+            <p>Your booking at <strong>${garageName}</strong> has been cancelled.</p>
+            <ul>
+              <li><strong>Service:</strong> ${service}</li>
+              <li><strong>Date:</strong> ${appointmentDate}</li>
+              <li><strong>Time:</strong> ${appointmentTime}</li>
+            </ul>
+            <p>If you have any questions, please contact the garage or our support.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Owner Email
+    const ownerHtml = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #f44336;">Booking Cancelled</h2>
+            <p>Dear ${ownerName},</p>
+            <p>A booking from <strong>${customerName}</strong> has been cancelled.</p>
+            <ul>
+              <li><strong>Service:</strong> ${service}</li>
+              <li><strong>Date:</strong> ${appointmentDate}</li>
+              <li><strong>Time:</strong> ${appointmentTime}</li>
+            </ul>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const emailPromises = [];
+
+    if (customerEmail && customerEmail.trim() !== "") {
+      emailPromises.push(
+        transporter.sendMail({
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+          to: customerEmail,
+          subject: "Booking Cancelled - WMT Mobile App",
+          html: customerHtml
+        }).catch(err => console.error("Failed to send cancellation to customer:", err))
+      );
+    }
+
+    if (ownerEmail && ownerEmail.trim() !== "") {
+      emailPromises.push(
+        transporter.sendMail({
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+          to: ownerEmail,
+          subject: "Booking Cancelled - WMT Mobile App",
+          html: ownerHtml
+        }).catch(err => console.error("Failed to send cancellation to owner:", err))
+      );
+    }
+
+    if (emailPromises.length > 0) {
+      await Promise.all(emailPromises);
+    }
+  } catch (error) {
+    console.error("Failed to send booking cancelled emails:", error);
+  }
+}
+
+/**
+ * Send booking confirmation email to customer
+ */
+async function sendBookingConfirmedEmail(customerEmail, customerName, bookingDetails) {
+  try {
+    const { garageName, service, appointmentDate, appointmentTime } = bookingDetails;
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #4CAF50;">Booking Confirmed!</h2>
+            <p>Dear ${customerName},</p>
+            <p>Your booking at <strong>${garageName}</strong> has been confirmed by the garage.</p>
+            <ul>
+              <li><strong>Service:</strong> ${service}</li>
+              <li><strong>Date:</strong> ${appointmentDate}</li>
+              <li><strong>Time:</strong> ${appointmentTime}</li>
+            </ul>
+            <p>We look forward to seeing you!</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    if (customerEmail && customerEmail.trim() !== "") {
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        to: customerEmail,
+        subject: "Booking Confirmed! - WMT Mobile App",
+        html: htmlContent
+      });
+    }
+  } catch (error) {
+    console.error("Failed to send booking confirmation email:", error);
+  }
+}
+
 module.exports = {
   sendAccountDeletionEmail,
-  sendAccountLockedEmail
+  sendAccountLockedEmail,
+  sendBookingAddedEmail,
+  sendBookingCancelledEmail,
+  sendBookingConfirmedEmail
 };

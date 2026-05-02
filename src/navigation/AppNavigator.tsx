@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LoginScreen } from "../screens/auth/LoginScreen";
 import { RegisterScreen } from "../screens/auth/RegisterScreen";
 import { LandingPage } from "../screens/auth/LandingPage";
+import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen";
 import { GarageListScreen } from "../screens/garages/GarageListScreen";
 import { GarageDetailsScreen } from "../screens/garages/GarageDetailsScreen";
 import { AppointmentBookingScreen } from "../screens/garages/AppointmentBookingScreen";
@@ -28,6 +29,14 @@ import { BrowseScreen } from "../screens/browse/BrowseScreen";
 import { AdminDashboardScreen } from "../screens/admin/AdminDashboardScreen";
 import { AdminAccountScreen } from "../screens/admin/AdminAccountScreen";
 import { AdminUsersManagementScreen } from "../screens/admin/AdminUsersManagementScreen";
+import { SettingsScreen } from "../screens/profile/SettingsScreen";
+import { NotificationsCenterScreen } from "../screens/profile/NotificationsCenterScreen";
+import { MyBookingsScreen } from "../screens/garages/MyBookingsScreen";
+import { CheckoutScreen } from "../screens/payments/CheckoutScreen";
+import { OrderHistoryScreen } from "../screens/payments/OrderHistoryScreen";
+import { OrderTrackingScreen } from "../screens/payments/OrderTrackingScreen";
+import { SellerProfileScreen } from "../screens/spareParts/SellerProfileScreen";
+import { PartsSearchScreen } from "../screens/spareParts/PartsSearchScreen";
 import { useAuth } from "../hooks/useAuth";
 import { useAppTheme } from "../hooks/useAppTheme";
 import { Role } from "../types/models";
@@ -36,6 +45,7 @@ export type RootStackParamList = {
   Landing: undefined;
   Login: undefined;
   Register: undefined;
+  ForgotPassword: { phone?: string } | undefined;
   UserHome: undefined;
   OwnerHome: undefined;
   OwnerAccount: undefined;
@@ -58,6 +68,14 @@ export type RootStackParamList = {
   Profile: undefined;
   PaymentMethods: undefined;
   CustomerPayments: undefined;
+  Settings: undefined;
+  NotificationsCenter: undefined;
+  MyBookings: undefined;
+  Checkout: undefined;
+  OrderHistory: undefined;
+  OrderTracking: { orderId: string };
+  SellerProfile: { sellerId?: string };
+  PartsSearch: undefined;
 };
 
 export type TabNavigatorParams = {
@@ -77,6 +95,7 @@ function AuthNavigator() {
       <Stack.Screen name="Landing" component={LandingPage} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 }
@@ -97,11 +116,18 @@ function UserHomeStack() {
         options={{ title: "Book Appointment" }}
       />
       <Stack.Screen
+        name="MyBookings"
+        component={MyBookingsScreen}
+        options={{ title: "My Bookings" }}
+      />
+      <Stack.Screen
         name="SpareParts"
         component={SparePartsListScreen}
         options={{ title: "Spare Parts" }}
       />
       <Stack.Screen name="SparePartDetails" component={SparePartDetailsScreen} />
+      <Stack.Screen name="PartsSearch" component={PartsSearchScreen} options={{ title: "Search Parts" }} />
+      <Stack.Screen name="SellerProfile" component={SellerProfileScreen} options={{ title: "Seller Profile" }} />
     </Stack.Navigator>
   );
 }
@@ -134,6 +160,8 @@ function BrowseStack() {
         options={{ title: "Spare Parts" }}
       />
       <Stack.Screen name="SparePartDetails" component={SparePartDetailsScreen} />
+      <Stack.Screen name="PartsSearch" component={PartsSearchScreen} options={{ title: "Search Parts" }} />
+      <Stack.Screen name="SellerProfile" component={SellerProfileScreen} options={{ title: "Seller Profile" }} />
     </Stack.Navigator>
   );
 }
@@ -143,6 +171,9 @@ function CartStack() {
     <Stack.Navigator>
       <Stack.Screen name="Cart" component={CartScreen} options={{ title: "Shopping Cart" }} />
       <Stack.Screen name="SparePartDetails" component={SparePartDetailsScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: "Checkout" }} />
+      <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} options={{ title: "Order History" }} />
+      <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} options={{ title: "Track Order" }} />
     </Stack.Navigator>
   );
 }
@@ -151,8 +182,12 @@ function AccountStack() {
   return (
     <Stack.Navigator>
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: "Profile" }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
+      <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ title: "Notifications" }} />
+      <Stack.Screen name="MyBookings" component={MyBookingsScreen} options={{ title: "My Bookings" }} />
       <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} options={{ title: "Payment Methods" }} />
       <Stack.Screen name="CustomerPayments" component={CustomerPaymentsScreen} options={{ title: "My Payments" }} />
+      <Stack.Screen name="SellerProfile" component={SellerProfileScreen} options={{ title: "Seller Profile" }} />
     </Stack.Navigator>
   );
 }
@@ -616,6 +651,8 @@ function AdminTabNavigator() {
   );
 }
 
+import { EmailSetupScreen } from "../screens/auth/EmailSetupScreen";
+
 function RoleNavigator({ role }: { role: Role }) {
   if (role === "GARAGE_OWNER") {
     return <OwnerTabNavigator />;
@@ -637,6 +674,10 @@ export function AppNavigator() {
 
   if (!isAuthenticated || !currentUser) {
     return <AuthNavigator />;
+  }
+
+  if (!currentUser.email) {
+    return <EmailSetupScreen />;
   }
 
   return <RoleNavigator key={currentUser.role} role={currentUser.role} />;

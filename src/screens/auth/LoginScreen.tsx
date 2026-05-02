@@ -58,6 +58,10 @@ export function LoginScreen({ navigation }: Props) {
         <Text style={[styles.primaryButtonText, { color: colors.primaryText }]}>Sign In</Text>
       </Pressable>
 
+      <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
+        <Text style={[styles.link, { color: colors.primary }]}>Forgot Password?</Text>
+      </Pressable>
+
       <Pressable onPress={() => navigation.navigate("Register")}>
         <Text style={[styles.link, { color: colors.primary }]}>Create a new account</Text>
       </Pressable>

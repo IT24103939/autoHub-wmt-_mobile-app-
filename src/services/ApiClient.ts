@@ -4,7 +4,8 @@ import { errorLogger } from "../utils/errorLogger";
 
 import { Platform } from "react-native";
 
-const API_BASE_URL = Platform.OS === "web" ? "http://localhost:8099/api" : "http://10.0.2.2:8099/api";
+// Updated to use the local Wi-Fi IP address for Expo Go testing
+const API_BASE_URL = Platform.OS === "web" ? "http://localhost:8099/api" : "http://172.28.18.120:8099/api";
 
 export interface ApiConfig {
   baseURL: string;
@@ -68,21 +69,22 @@ class ApiClientClass {
     const headers = this.getHeaders(additionalHeaders);
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-
       const options: RequestInit = {
         method,
-        headers,
-        signal: controller.signal
+        headers
       };
 
       if (data) {
         options.body = JSON.stringify(data);
       }
 
-      const response = await fetch(url, options);
-      clearTimeout(timeoutId);
+      // Use Promise.race instead of AbortController to avoid React Native RangeError bug
+      const fetchPromise = fetch(url, options);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Request timeout")), this.timeout);
+      });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
 
       if (!response.ok) {
         const errorData = await this.parseResponse(response);
@@ -120,15 +122,6 @@ class ApiClientClass {
         throw {
           status: 0,
           message: "Network error: " + error.message
-        } as ApiError;
-      }
-
-      // Handle AbortController timeout
-      if (error.name === "AbortError") {
-        console.error("[Network Timeout]", url);
-        throw {
-          status: 0,
-          message: "Request timeout"
         } as ApiError;
       }
 

@@ -26,12 +26,12 @@ interface ShopContextValue {
   addToCart: (partId: string) => void;
   removeFromCart: (partId: string) => void;
   clearCart: () => void;
-  bookAppointment: (payload: Omit<Appointment, "id" | "status">) => void;
-  cancelAppointment: (appointmentId: string) => void;
+  bookAppointment: (payload: Omit<Appointment, "id" | "status">) => Promise<Appointment>;
+  cancelAppointment: (appointmentId: string) => Promise<void>;
   addReview: (payload: Omit<Review, "id">) => void;
-  confirmAppointment: (appointmentId: string, managerName?: string) => void;
-  createGarage: (ownerId: string, garage: Partial<Garage>) => Garage;
-  updateGarage: (garageId: string, updates: Partial<Garage>) => void;
+  confirmAppointment: (appointmentId: string, managerName?: string) => Promise<void>;
+  createGarage: (ownerId: string, garage: Partial<Garage>) => Promise<Garage>;
+  updateGarage: (garageId: string, updates: Partial<Garage>) => Promise<void>;
   setSpareParts: (parts: SparePart[]) => void;
 }
 
@@ -66,18 +66,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }
 
         const parsed = JSON.parse(stored) as Partial<StoredShopState>;
-        if (Array.isArray(parsed.garages)) {
-          setGaragesList(parsed.garages);
-        } else {
-          setGaragesList([]);
+        if (parsed && typeof parsed === "object") {
+          if (Array.isArray(parsed.garages)) {
+            setGaragesList(parsed.garages);
+          }
+          setSelectedGarageId(parsed.selectedGarageId ?? null);
+          setCartItems(parsed.cartItems ?? []);
+          setAppointments(parsed.appointments ?? []);
+          setReviews(parsed.reviews ?? []);
+          setNotifications(parsed.notifications ?? []);
         }
-        setSelectedGarageId(parsed.selectedGarageId ?? null);
-        setCartItems(parsed.cartItems ?? []);
-        setAppointments(parsed.appointments ?? []);
-        setReviews(parsed.reviews ?? []);
-        setNotifications(parsed.notifications ?? []);
-      } catch {
-        // Ignore invalid cached shop state and continue with defaults.
+      } catch (error) {
+        console.warn("Failed to hydrate shop state:", error);
       }
     };
 
@@ -93,8 +93,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
           setSparePartsList(parts);
         }
       } catch (error) {
-        // If API call fails, keep using mock data
-        console.log("Using mock spare parts (API unavailable)");
+        console.log("Spare parts API unavailable, using cached data");
       }
     };
 
@@ -105,14 +104,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const fetchGarages = async () => {
       try {
-        // Dynamic import to avoid circular dependency issues if any
         const { garageApiService } = require("../services/GarageApiService");
-        const fetchedGarages = await garageApiService.getAllGarages();
-        if (Array.isArray(fetchedGarages)) {
-          setGaragesList(fetchedGarages);
+        if (garageApiService) {
+          const fetchedGarages = await garageApiService.getAllGarages();
+          if (Array.isArray(fetchedGarages)) {
+            setGaragesList(fetchedGarages);
+            console.log(`Successfully fetched ${fetchedGarages.length} garages from database`);
+          }
         }
       } catch (error) {
-        console.log("Using mock garages (API unavailable)");
+        console.log("Garages API unavailable, using cached data");
       }
     };
 
@@ -175,62 +176,48 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCartItems([]);
   };
 
-  const bookAppointment = (payload: Omit<Appointment, "id" | "status">) => {
-    setAppointments((prev) => {
-      const slotTaken = prev.some(
-        (appointment) =>
-          appointment.garageId === payload.garageId &&
-          appointment.appointmentDate === payload.appointmentDate &&
-          appointment.appointmentTime === payload.appointmentTime
-      );
-
-      if (slotTaken) {
-        throw new Error("That time slot is already booked for this garage.");
-      }
-
-      return [
-        {
-          id: `appt-${Date.now()}`,
-          status: "PENDING",
-          ...payload
-        },
-        ...prev
-      ];
-    });
+  const bookAppointment = async (payload: Omit<Appointment, "id" | "status">) => {
+    try {
+      const { appointmentApiService } = require("../services/AppointmentApiService");
+      const newAppointment = await appointmentApiService.bookAppointment(payload);
+      
+      setAppointments((prev) => [newAppointment, ...prev]);
+      return newAppointment;
+    } catch (error) {
+      console.error("Failed to book appointment in database:", error);
+      throw error;
+    }
   };
 
-  const cancelAppointment = (appointmentId: string) => {
-    let notificationToAdd: AppNotification | null = null;
+  const cancelAppointment = async (appointmentId: string) => {
+    try {
+      const { appointmentApiService } = require("../services/AppointmentApiService");
+      await appointmentApiService.updateAppointmentStatus(appointmentId, "CANCELLED");
+      
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === appointmentId ? { ...appointment, status: "CANCELLED" } : appointment
+        )
+      );
+    } catch (error) {
+      console.error("Failed to cancel appointment in database:", error);
+      throw error;
+    }
+  };
 
-    setAppointments((prev) =>
-      prev.map((appointment) => {
-        if (appointment.id !== appointmentId) {
-          return appointment;
-        }
-
-        if (appointment.status === "CANCELLED") {
-          return appointment;
-        }
-
-        notificationToAdd = {
-          id: `notif-${Date.now()}`,
-          userId: appointment.garageOwnerId, // Notify the manager
-          title: "Appointment Cancelled",
-          message: `${appointment.customerName} cancelled their ${appointment.service} booking at ${appointment.garageName} scheduled for ${appointment.appointmentDate}.`,
-          createdAt: new Date().toISOString(),
-          read: false,
-          appointmentId: appointment.id
-        };
-
-        return {
-          ...appointment,
-          status: "CANCELLED"
-        };
-      })
-    );
-
-    if (notificationToAdd) {
-      setNotifications((prev) => [notificationToAdd as AppNotification, ...prev]);
+  const confirmAppointment = async (appointmentId: string, managerName?: string) => {
+    try {
+      const { appointmentApiService } = require("../services/AppointmentApiService");
+      await appointmentApiService.updateAppointmentStatus(appointmentId, "CONFIRMED");
+      
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === appointmentId ? { ...appointment, status: "CONFIRMED" } : appointment
+        )
+      );
+    } catch (error) {
+      console.error("Failed to confirm appointment in database:", error);
+      throw error;
     }
   };
 
@@ -244,63 +231,41 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     ]);
   };
 
-  const confirmAppointment = (appointmentId: string, managerName?: string) => {
-    let notificationToAdd: AppNotification | null = null;
-
-    setAppointments((prev) =>
-      prev.map((appointment) => {
-        if (appointment.id !== appointmentId) {
-          return appointment;
-        }
-
-        if (appointment.status === "CONFIRMED") {
-          return appointment;
-        }
-
-        notificationToAdd = {
-          id: `notif-${Date.now()}`,
-          userId: appointment.customerId,
-          title: "Appointment Confirmed",
-          message: `${managerName ?? "Garage manager"} confirmed your ${appointment.service} booking at ${appointment.garageName}.`,
-          createdAt: new Date().toISOString(),
-          read: false,
-          appointmentId: appointment.id
-        };
-
-        return {
-          ...appointment,
-          status: "CONFIRMED"
-        };
-      })
-    );
-
-    if (notificationToAdd) {
-      setNotifications((prev) => [notificationToAdd as AppNotification, ...prev]);
+  const createGarage = async (ownerId: string, garage: Partial<Garage>): Promise<Garage> => {
+    try {
+      const { garageApiService } = require("../services/GarageApiService");
+      const newGarage = await garageApiService.createGarage({
+        ...garage,
+        ownerId,
+        id: "", // Backend will generate or we use temporary
+        services: garage.services || [],
+        mapQuery: garage.mapQuery || "",
+        openingHours: garage.openingHours || "09:00 - 18:00"
+      } as Garage);
+      
+      setGaragesList((prev) => [...prev, newGarage]);
+      return newGarage;
+    } catch (error) {
+      console.error("Failed to create garage in database:", error);
+      // Fallback to local only if needed, but better to throw
+      throw error;
     }
   };
 
-  const createGarage = (ownerId: string, garage: Partial<Garage>): Garage => {
-    const newGarage: Garage = {
-      id: `garage-${Date.now()}`,
-      ownerId,
-      name: garage.name || "My Garage",
-      address: garage.address || "",
-      city: garage.city || "",
-      openingHours: garage.openingHours || "09:00 - 18:00",
-      description: garage.description || "",
-      services: garage.services || [],
-      mapQuery: garage.mapQuery || ""
-    };
-    setGaragesList((prev) => [...prev, newGarage]);
-    return newGarage;
-  };
-
-  const updateGarage = (garageId: string, updates: Partial<Garage>) => {
-    setGaragesList((prev) =>
-      prev.map((garage) =>
-        garage.id === garageId ? { ...garage, ...updates } : garage
-      )
-    );
+  const updateGarage = async (garageId: string, updates: Partial<Garage>) => {
+    try {
+      const { garageApiService } = require("../services/GarageApiService");
+      const updatedGarage = await garageApiService.updateGarage(garageId, updates);
+      
+      setGaragesList((prev) =>
+        prev.map((garage) =>
+          garage.id === garageId ? updatedGarage : garage
+        )
+      );
+    } catch (error) {
+      console.error("Failed to update garage in database:", error);
+      throw error;
+    }
   };
 
   const selectedGarage = useMemo(

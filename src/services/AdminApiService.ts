@@ -22,8 +22,8 @@ class AdminApiServiceClass {
    */
   async getSystemStats(): Promise<AdminStats> {
     try {
-      const response = await ApiClient.get("/admin/stats");
-      return response.data;
+      const response = await ApiClient.get<any>("/admin/stats");
+      return response;
     } catch (error) {
       errorLogger.log(error, "network", "/admin/stats");
       console.error("Failed to fetch system stats:", error);
@@ -39,8 +39,8 @@ class AdminApiServiceClass {
     limit: number = 20
   ): Promise<UserManagementData[]> {
     try {
-      const response = await ApiClient.get(`/admin/users?page=${page}&limit=${limit}`);
-      return response.data;
+      const response = await ApiClient.get<any>(`/admin/users?page=${page}&limit=${limit}`);
+      return response;
     } catch (error) {
       errorLogger.log(error, "network", "/admin/users");
       console.error("Failed to fetch users:", error);
@@ -53,8 +53,8 @@ class AdminApiServiceClass {
    */
   async getUserDetail(userId: string): Promise<UserManagementData> {
     try {
-      const response = await ApiClient.get(`/admin/users/${userId}`);
-      return response.data;
+      const response = await ApiClient.get<UserManagementData>(`/admin/users/${userId}`);
+      return response;
     } catch (error) {
       errorLogger.log(error, "network", `/admin/users/${userId}`);
       console.error("Failed to fetch user detail:", error);
@@ -93,10 +93,10 @@ class AdminApiServiceClass {
    */
   async getAllGarages(page: number = 1, limit: number = 20): Promise<any[]> {
     try {
-      const response = await ApiClient.get(
+      const response = await ApiClient.get<any>(
         `/admin/garages?page=${page}&limit=${limit}`
       );
-      return response.data;
+      return response;
     } catch (error) {
       errorLogger.log(error, "network", "/admin/garages");
       console.error("Failed to fetch garages:", error);
@@ -112,10 +112,10 @@ class AdminApiServiceClass {
     limit: number = 20
   ): Promise<any[]> {
     try {
-      const response = await ApiClient.get(
+      const response = await ApiClient.get<any>(
         `/admin/appointments?page=${page}&limit=${limit}`
       );
-      return response.data;
+      return response;
     } catch (error) {
       console.error("Failed to fetch appointments:", error);
       throw error;
@@ -128,8 +128,8 @@ class AdminApiServiceClass {
   async getActivityLogs(userId?: string): Promise<any[]> {
     try {
       const query = userId ? `?userId=${userId}` : "";
-      const response = await ApiClient.get(`/admin/activity-logs${query}`);
-      return response.data;
+      const response = await ApiClient.get<any>(`/admin/activity-logs${query}`);
+      return response;
     } catch (error) {
       console.error("Failed to fetch activity logs:", error);
       throw error;
@@ -141,10 +141,10 @@ class AdminApiServiceClass {
    */
   async generateReport(reportType: "daily" | "weekly" | "monthly"): Promise<Blob> {
     try {
-      const response = await ApiClient.get(`/admin/reports/${reportType}`, {
+      const response = await ApiClient.get<any>(`/admin/reports/${reportType}`, {
         responseType: "blob",
       });
-      return response.data;
+      return response;
     } catch (error) {
       console.error("Failed to generate report:", error);
       throw error;
@@ -156,8 +156,8 @@ class AdminApiServiceClass {
    */
   async updateProfile(data: { fullName: string }): Promise<any> {
     try {
-      const response = await ApiClient.put("/admin/profile", data);
-      return response.data;
+      const response = await ApiClient.put<any>("/admin/profile", data);
+      return response;
     } catch (error) {
       console.error("Failed to update profile:", error);
       throw error;
@@ -169,10 +169,10 @@ class AdminApiServiceClass {
    */
   async deleteUserAccount(userId: string, reason: string): Promise<any> {
     try {
-      const response = await ApiClient.post(`/admin/users/${userId}/delete`, {
+      const response = await ApiClient.post<any>(`/admin/users/${userId}/delete`, {
         reason,
       });
-      return response.data;
+      return response;
     } catch (error) {
       console.error("Failed to delete user account:", error);
       throw error;
@@ -184,10 +184,10 @@ class AdminApiServiceClass {
    */
   async suspendUserAccount(userId: string, reason: string): Promise<any> {
     try {
-      const response = await ApiClient.post(`/admin/users/${userId}/suspend`, {
+      const response = await ApiClient.post<any>(`/admin/users/${userId}/suspend`, {
         reason,
       });
-      return response.data;
+      return response;
     } catch (error) {
       console.error("Failed to suspend user account:", error);
       throw error;

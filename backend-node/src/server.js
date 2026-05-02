@@ -33,6 +33,7 @@ app.use("/api/spare-parts", sparePartsRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });

@@ -296,7 +296,7 @@ export function OwnerDashboardScreen({ navigation }: Props) {
 
                 <Pressable
                   style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
-                  onPress={() => {
+                  onPress={async () => {
                     if (!selectedAppointment) {
                       return;
                     }
@@ -306,7 +306,12 @@ export function OwnerDashboardScreen({ navigation }: Props) {
                       return;
                     }
 
-                    confirmAppointment(selectedAppointment.id, currentUser?.fullName);
+                    if (selectedAppointment.status === "CANCELLED") {
+                      Alert.alert("Cancelled", "This appointment has been cancelled and cannot be confirmed.");
+                      return;
+                    }
+
+                    await confirmAppointment(selectedAppointment.id, currentUser?.fullName);
                     Alert.alert("Booking Confirmed", "Customer has been notified about the confirmation.");
                     setSelectedAppointment(null);
                   }}

@@ -9,6 +9,7 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   phone: string;
+  email: string;
   fullName: string;
   password: string;
   role: string;
@@ -17,6 +18,7 @@ export interface RegisterRequest {
 export interface UserResponse {
   id: string;
   fullName: string;
+  email: string;
   phone: string;
   role: string;
 }
@@ -51,11 +53,12 @@ class AuthApiService {
     }
   }
 
-  async updateAccount(fullName: string, phone: string, currentPassword: string, newPassword?: string): Promise<UserResponse> {
+  async updateAccount(fullName: string, phone: string, email: string, currentPassword: string, newPassword?: string): Promise<UserResponse> {
     try {
       return await apiClient.put<UserResponse>("/account/me", {
         fullName,
         phone,
+        email,
         currentPassword,
         newPassword
       });
@@ -64,9 +67,41 @@ class AuthApiService {
     }
   }
 
+  async setupEmail(email: string): Promise<UserResponse> {
+    try {
+      return await apiClient.post<UserResponse>("/account/setup-email", { email });
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async deleteAccount(): Promise<void> {
     try {
       await apiClient.delete<void>("/account/me");
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async forgotPassword(phone: string, email?: string): Promise<{ message: string; otp?: string; requiresEmail?: boolean }> {
+    try {
+      return await apiClient.post<{ message: string; otp?: string; requiresEmail?: boolean }>("/auth/forgot-password", { phone, email });
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async verifyOtp(phone: string, otp: string): Promise<{ message: string }> {
+    try {
+      return await apiClient.post<{ message: string }>("/auth/verify-otp", { phone, otp });
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async resetPassword(phone: string, otp: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      return await apiClient.post<{ message: string }>("/auth/reset-password", { phone, otp, newPassword });
     } catch (error) {
       throw this.handleError(error);
     }

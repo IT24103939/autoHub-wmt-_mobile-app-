@@ -18,6 +18,7 @@ export function RegisterScreen({ navigation }: Props) {
   const { register } = useAuth();
   const { colors } = useAppTheme();
   const [fullName, setFullName] = React.useState("");
+  const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState<Role>("USER");
@@ -26,8 +27,13 @@ export function RegisterScreen({ navigation }: Props) {
   const onRegister = async () => {
     setError("");
 
-    if (!fullName.trim() || !phone.trim() || !password.trim()) {
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !password.trim()) {
       setError("Please fill all fields");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address");
       return;
     }
 
@@ -37,7 +43,7 @@ export function RegisterScreen({ navigation }: Props) {
     }
 
     try {
-      await register({ fullName, phone, password, role });
+      await register({ fullName, email, phone, password, role });
     } catch (registerError) {
       setError(
         registerError instanceof Error
@@ -56,6 +62,15 @@ export function RegisterScreen({ navigation }: Props) {
         onChangeText={setFullName}
         placeholder="Full name"
         placeholderTextColor={colors.mutedText}
+        style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }]}
+      />
+      <TextInput
+        value={email}
+        onChangeText={setEmail}
+        placeholder="Email address"
+        placeholderTextColor={colors.mutedText}
+        keyboardType="email-address"
+        autoCapitalize="none"
         style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }]}
       />
       <TextInput

@@ -95,7 +95,7 @@ router.post("/users/:id/delete", requireAuth, requireAdmin, async (req, res, nex
     // Send email notification BEFORE deletion
     try {
       await sendAccountDeletionEmail(
-        userToDelete.phone || "noemail@example.com",
+        userToDelete.email || "noemail@example.com",
         userToDelete.fullName,
         reason,
         adminName

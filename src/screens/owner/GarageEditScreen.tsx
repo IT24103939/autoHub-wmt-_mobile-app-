@@ -53,7 +53,7 @@ export function GarageEditScreen({ navigation }: Props) {
     setServices(services.filter((s) => s !== service));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert("Validation Error", "Garage name cannot be empty.");
       return;
@@ -93,13 +93,13 @@ export function GarageEditScreen({ navigation }: Props) {
           Alert.alert("Error", "User ID not found. Please login again.");
           return;
         }
-        createGarage(currentUser.id, garageData);
+        await createGarage(currentUser.id, garageData);
         Alert.alert("Success", "Garage created successfully.", [
           { text: "OK", onPress: () => navigation.goBack() }
         ]);
       } else {
         // Update existing garage
-        updateGarage(ownerGarage.id, garageData);
+        await updateGarage(ownerGarage.id, garageData);
         Alert.alert("Success", "Garage details updated successfully.", [
           { text: "OK", onPress: () => navigation.goBack() }
         ]);
@@ -119,9 +119,14 @@ export function GarageEditScreen({ navigation }: Props) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 80}
     >
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        contentContainerStyle={[styles.container, { backgroundColor: colors.background }]} 
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={true}
+      >
 
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>🏪 Garage Information</Text>

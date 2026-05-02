@@ -3,6 +3,7 @@ export type Role = "USER" | "GARAGE_OWNER" | "SUPPLIER" | "ADMIN";
 export interface AppUser {
   id: string;
   fullName: string;
+  email: string;
   phone: string;
   role: Role;
 }

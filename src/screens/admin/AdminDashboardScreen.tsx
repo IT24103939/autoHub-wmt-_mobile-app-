@@ -54,17 +54,16 @@ export function AdminDashboardScreen() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      // TODO: Add admin API endpoints to fetch stats
-      // const response = await ApiClient.get('/admin/stats');
-      // setStats(response.data);
-
-      // Mock data for now
-      setStats({
-        totalUsers: 156,
-        totalGarages: 12,
-        totalAppointments: 324,
-        totalSuppliers: 8,
-      });
+      const { AdminApiService } = require("../../services/AdminApiService");
+      const response = await AdminApiService.getSystemStats();
+      if (response) {
+        setStats({
+          totalUsers: response.totalUsers || 0,
+          totalGarages: response.totalGarages || 0,
+          totalAppointments: response.totalAppointments || 0,
+          totalSuppliers: response.totalSuppliers || 0,
+        });
+      }
     } catch (error) {
       Alert.alert("Error", "Failed to load dashboard data");
       console.error(error);

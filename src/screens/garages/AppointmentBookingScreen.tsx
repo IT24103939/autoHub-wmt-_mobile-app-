@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ActivityIndicator } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/AppNavigator";
 import { useShop } from "../../hooks/useShop";
@@ -127,7 +127,7 @@ export function AppointmentBookingScreen({ navigation, route }: Props) {
     }
   }, [appointmentTime, slotOptions]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!currentUser) {
       Alert.alert("Login Required", "Please log in before booking an appointment.");
       return;
@@ -156,7 +156,7 @@ export function AppointmentBookingScreen({ navigation, route }: Props) {
 
     selectGarage(garage.id);
     try {
-      bookAppointment({
+      await bookAppointment({
         garageId: garage.id,
         garageOwnerId: garage.ownerId,
         garageName: garage.name,
@@ -179,8 +179,17 @@ export function AppointmentBookingScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.heroCard, { backgroundColor: colors.primary }]}> 
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 80}
+    >
+      <ScrollView 
+        contentContainerStyle={[styles.container, { backgroundColor: colors.background }]} 
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={true}
+      >
+        <View style={[styles.heroCard, { backgroundColor: colors.primary }]}> 
         <Text style={styles.heroTitle}>{garage.name}</Text>
         <Text style={styles.heroSubtitle}>Book a garage service appointment</Text>
       </View>
@@ -269,6 +278,7 @@ export function AppointmentBookingScreen({ navigation, route }: Props) {
         <Text style={[styles.primaryButtonText, { color: colors.primaryText }]}>Confirm Appointment</Text>
       </Pressable>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

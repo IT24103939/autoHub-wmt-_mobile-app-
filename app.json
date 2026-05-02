@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "platforms": [
       "ios",
-      "android"
+      "android",
+      "web"
     ],
     "sdkVersion": "54.0.0",
     "entryPoint": "index.js",
