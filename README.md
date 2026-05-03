@@ -13,11 +13,31 @@ A comprehensive mobile platform built to seamlessly connect end users, garage ow
 
 ## 🛠️ Technology Stack
 
-*   **Frontend:** React Native, Expo, TypeScript, React Navigation
-*   **Backend:** Node.js, Express.js
+*   **Frontend:** React Native (Expo SDK 54), TypeScript, React Navigation 7
+*   **Backend:** Node.js, Express.js (Deployed on Render)
 *   **Database:** MongoDB, Mongoose
 *   **Authentication:** JWT, bcryptjs
-*   **Other:** Nodemailer (Email services)
+*   **CI/CD:** Render (Backend), EAS Build (Frontend APK)
+
+## 🌐 Deployment Status
+
+*   **Backend API:** `https://mobile-app-backend-i1rk.onrender.com/api`
+*   **Health Check:** `https://mobile-app-backend-i1rk.onrender.com/api/health`
+*   **Note:** The backend is on a free tier and may sleep after 15 minutes of inactivity. The first request after a sleep period may take 30-60 seconds to respond.
+
+## 🏗️ Build & Stabilization
+
+The application has been hardened for production APK stability:
+*   **Global Error Boundary:** Prevents silent crashes by showing a recovery screen.
+*   **Native Bridge Stabilization:** Added a startup delay to ensure the native bridge is ready before rendering complex UI.
+*   **Adaptive Icon Support:** Correctly configured for modern Android compatibility.
+*   **Response Polyfill Fix:** Resolved issues with `fetch` polyfills in production environments.
+
+### Generating an Android APK
+To generate a new installable APK using EAS Build:
+1.  Install EAS CLI: `npm install -g eas-cli`
+2.  Log in: `eas login`
+3.  Build: `eas build --platform android --profile preview`
 
 ## 📁 Project Structure
 
@@ -25,37 +45,22 @@ A comprehensive mobile platform built to seamlessly connect end users, garage ow
 wmt/
 ├── backend-node/             # Node.js Express Backend
 │   ├── src/
-│   │   ├── controllers/      # API route handlers
-│   │   ├── models/           # Mongoose database schemas
 │   │   ├── routes/           # Express API endpoints
 │   │   └── server.js         # Core API setup and database connection
-│   └── package.json
 ├── src/                      # React Native Frontend App
-│   ├── assets/               # Images, icons, and static assets
-│   ├── components/           # Reusable UI components (common, garage, spareParts)
+│   ├── context/              # Auth and Shop state providers
 │   ├── navigation/           # React Navigation setup
-│   ├── screens/              # Application screens (Auth, Garages, SpareParts, Cart, Profile)
-│   ├── services/             # API clients and HTTP services
-│   ├── store/                # State management slices
-│   └── types/                # TypeScript interfaces and models
-├── App.tsx                   # Main React Native entry point
-├── app.json                  # Expo configuration
-├── package.json              # Frontend dependencies
-├── QUICKSTART.md             # Frontend/Backend setup guide
-└── README.md                 # Project Overview
+│   ├── screens/              # Application screens
+│   ├── services/             # API clients (pointing to Render)
+│   └── hooks/                # Custom hooks (useAuth, useShop, useAppTheme)
+├── App.tsx                   # Main entry point with ErrorBoundary
+├── app.json                  # Expo config (CNG enabled)
+└── eas.json                  # EAS Build profiles
 ```
 
-## 🚀 Getting Started
+## 🚀 Development
 
-To run the project locally, you will need to set up your MongoDB database, configure your environment variables (including your database URI and JWT secrets), and install the necessary dependencies for both the frontend and backend.
+1.  **Frontend**: `npm start`
+2.  **Backend**: `cd backend-node && npm run dev`
 
-Please refer to the `QUICKSTART.md` or `MONGODB_SETUP.md` files for a detailed, step-by-step installation guide.
-
-## 🔒 Security Notes
-
-*   Ensure that your `.env` files in both the frontend and `backend-node` directories containing your database credentials and API keys are never committed to version control.
-*   The system uses `bcryptjs` to hash all passwords securely before storing them in the MongoDB database.
-
-## 🤝 Contributing
-
-When contributing to this project, please ensure you test both the backend Express API endpoints and the frontend React Native screens before creating a pull request.
+Ensure your `src/services/ApiClient.ts` is configured with the correct `API_BASE_URL`.
