@@ -21,7 +21,10 @@
       "**/*"
     ],
     "android": {
-      "package": "com.anonymous.autohub"
+      "package": "com.anonymous.autohub",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       [
@@ -30,6 +33,11 @@
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "01a92381-71c9-4b1a-80e7-1009760a5571"
+      }
+    }
   }
 }
