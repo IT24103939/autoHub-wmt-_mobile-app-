@@ -9,7 +9,8 @@
       "android",
       "web"
     ],
-    "sdkVersion": "54.0.0",
+    "sdkVersion": "51.0.0",
+    "jsEngine": "hermes",
     "entryPoint": "index.js",
     "icon": "./assets/Gemini_Generated_Image_j41w25j41w25j41w.png",
     "splash": {
@@ -21,10 +22,7 @@
       "**/*"
     ],
     "android": {
-      "package": "com.anonymous.autohub",
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "package": "com.anonymous.autohub"
     },
     "plugins": [
       [

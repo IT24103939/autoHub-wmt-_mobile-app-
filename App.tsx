@@ -9,30 +9,41 @@ import { ThemeProvider } from "./src/context/ThemeContext";
 import { useAppTheme } from "./src/hooks/useAppTheme";
 
 // Global error boundary — prevents any JS crash from silently killing the app
-interface ErrorBoundaryState { hasError: boolean; error: string | null }
+interface ErrorBoundaryState { hasError: boolean; error: string | null; errorInfo: any }
+
+// Global error listener for React Native native crashes/unhandled promises
+if (typeof ErrorUtils !== 'undefined') {
+  const previousHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error: any, isFatal: boolean) => {
+    console.error("Global Native Error Caught:", error, "Fatal:", isFatal);
+    if (previousHandler) previousHandler(error, isFatal);
+  });
+}
+
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error: error?.message || "Unknown error" };
   }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary] Caught crash:", error, info);
+    this.setState({ errorInfo: info });
   }
   render() {
     if (this.state.hasError) {
       return (
         <View style={styles.errorContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorTitle}>App Error</Text>
           <Text style={styles.errorMsg}>{this.state.error}</Text>
           <Pressable
             style={styles.retryBtn}
             onPress={() => this.setState({ hasError: false, error: null })}
           >
-            <Text style={styles.retryText}>Try Again</Text>
+            <Text style={styles.retryText}>Reload App</Text>
           </Pressable>
         </View>
       );
@@ -42,10 +53,14 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, Error
 }
 
 function RootNavigation() {
-  const { navigationTheme } = useAppTheme();
+  const theme = useAppTheme();
+  
+  if (!theme || !theme.navigationTheme) {
+    return <View style={{ flex: 1, backgroundColor: "#0F0F1A" }} />;
+  }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer theme={theme.navigationTheme}>
       <AppNavigator />
     </NavigationContainer>
   );
@@ -53,17 +68,19 @@ function RootNavigation() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <ThemeProvider>
-            <ShopProvider>
-              <RootNavigation />
-            </ShopProvider>
-          </ThemeProvider>
-        </AuthProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <View style={{ flex: 1, backgroundColor: "#0F0F1A" }}>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <ShopProvider>
+                <RootNavigation />
+              </ShopProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </View>
   );
 }
 

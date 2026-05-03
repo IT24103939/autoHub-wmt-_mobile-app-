@@ -89,8 +89,8 @@ class ApiClientClass {
         })
       ]);
 
-      if (!(response instanceof Response)) {
-         throw new Error("Invalid response received");
+      if (!response || typeof response.ok === "undefined") {
+         throw new Error("Invalid response received (not a Response object)");
       }
 
       if (!response.ok) {
