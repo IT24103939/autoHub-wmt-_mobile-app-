@@ -9,7 +9,7 @@
       "android",
       "web"
     ],
-    "sdkVersion": "51.0.0",
+    "sdkVersion": "54.0.0",
     "jsEngine": "hermes",
     "entryPoint": "index.js",
     "icon": "./assets/Gemini_Generated_Image_j41w25j41w25j41w.png",
@@ -22,7 +22,11 @@
       "**/*"
     ],
     "android": {
-      "package": "com.anonymous.autohub"
+      "package": "com.anonymous.autohub",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Gemini_Generated_Image_j41w25j41w25j41w.png",
+        "backgroundColor": "#000000"
+      }
     },
     "plugins": [
       [

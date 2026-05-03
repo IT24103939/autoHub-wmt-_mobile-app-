@@ -12,12 +12,16 @@ import { useAppTheme } from "./src/hooks/useAppTheme";
 interface ErrorBoundaryState { hasError: boolean; error: string | null; errorInfo: any }
 
 // Global error listener for React Native native crashes/unhandled promises
-if (typeof ErrorUtils !== 'undefined') {
-  const previousHandler = ErrorUtils.getGlobalHandler();
-  ErrorUtils.setGlobalHandler((error: any, isFatal: boolean) => {
-    console.error("Global Native Error Caught:", error, "Fatal:", isFatal);
-    if (previousHandler) previousHandler(error, isFatal);
-  });
+try {
+  if (typeof ErrorUtils !== 'undefined' && typeof ErrorUtils.getGlobalHandler === 'function') {
+    const previousHandler = ErrorUtils.getGlobalHandler();
+    ErrorUtils.setGlobalHandler((error: any, isFatal: boolean) => {
+      console.error("Global Native Error Caught:", error, "Fatal:", isFatal);
+      if (previousHandler) previousHandler(error, isFatal);
+    });
+  }
+} catch (e) {
+  console.warn("ErrorUtils setup failed, skipping global handler");
 }
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
@@ -54,8 +58,15 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, Error
 
 function RootNavigation() {
   const theme = useAppTheme();
+  const [isReady, setIsReady] = React.useState(false);
+
+  // Give the native bridge 100ms to settle before mounting the full navigation tree
+  React.useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 150);
+    return () => clearTimeout(timer);
+  }, []);
   
-  if (!theme || !theme.navigationTheme) {
+  if (!isReady || !theme || !theme.navigationTheme) {
     return <View style={{ flex: 1, backgroundColor: "#0F0F1A" }} />;
   }
 
