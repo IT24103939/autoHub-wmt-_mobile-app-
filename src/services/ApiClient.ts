@@ -2,10 +2,9 @@
 
 import { errorLogger } from "../utils/errorLogger";
 
-import { Platform } from "react-native";
 
-// Updated to use the local Wi-Fi IP address for Expo Go testing
-const API_BASE_URL = Platform.OS === "web" ? "http://localhost:8099/api" : "http://192.168.8.110:8099/api";
+// Live Render deployment URL
+const API_BASE_URL = "https://mobile-app-backend-i1rk.onrender.com/api";
 
 export interface ApiConfig {
   baseURL: string;
