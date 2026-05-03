@@ -25,7 +25,41 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/Gemini_Generated_Image_j41w25j41w25j41w.png",
         "backgroundColor": "#000000"
-      }
+      },
+      "queries": [
+        {
+          "intent": {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "geo"
+            }
+          }
+        },
+        {
+          "intent": {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "https"
+            }
+          }
+        },
+        {
+          "intent": {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "http"
+            }
+          }
+        },
+        {
+          "intent": {
+            "action": "android.intent.action.VIEW",
+            "data": {
+              "scheme": "mailto"
+            }
+          }
+        }
+      ]
     },
     "plugins": [
       [

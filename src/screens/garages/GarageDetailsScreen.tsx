@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, View, Text, StyleSheet, ScrollView, Pressable, Linking, Alert } from "react-native";
+import { ActivityIndicator, View, Text, StyleSheet, ScrollView, Pressable, Linking, Alert, Platform } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/AppNavigator";
 import { useShop } from "../../hooks/useShop";
@@ -67,15 +67,37 @@ export function GarageDetailsScreen({ route, navigation }: Props) {
   }
 
   const handleOpenMap = async () => {
-    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(garage.mapQuery)}`;
-    const supported = await Linking.canOpenURL(mapUrl);
+    const query = encodeURIComponent(garage.mapQuery || `${garage.address}, ${garage.city}`);
+    
+    // On Android, use the geo: scheme to open the native Google Maps app directly if available
+    // On iOS, use the maps: scheme
+    const scheme = Platform.select({
+      ios: `maps:0,0?q=${query}`,
+      android: `geo:0,0?q=${query}`,
+    });
+    
+    const webUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
 
-    if (!supported) {
-      Alert.alert("Map Error", "Unable to open Google Maps on this device.");
-      return;
+    try {
+      if (scheme) {
+        const supported = await Linking.canOpenURL(scheme);
+        if (supported) {
+          await Linking.openURL(scheme);
+          return;
+        }
+      }
+      
+      // Fallback to web URL if native app isn't found or scheme fails
+      const webSupported = await Linking.canOpenURL(webUrl);
+      if (webSupported) {
+        await Linking.openURL(webUrl);
+      } else {
+        // Absolute fallback - try to open without checking support
+        await Linking.openURL(webUrl);
+      }
+    } catch (error) {
+      Alert.alert("Map Error", "Unable to open Google Maps. Please ensure you have a browser or map app installed.");
     }
-
-    await Linking.openURL(mapUrl);
   };
 
   const handleBookAppointment = () => {

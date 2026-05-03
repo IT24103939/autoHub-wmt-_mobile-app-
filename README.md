@@ -64,3 +64,11 @@ wmt/
 2.  **Backend**: `cd backend-node && npm run dev`
 
 Ensure your `src/services/ApiClient.ts` is configured with the correct `API_BASE_URL`.
+https://github.com/dilankaheshan859-collab/AutoHub_mobileapp.git
+##team details
+group Number:30
+*Group Members*
+ID 001	Name:Dilanka Hesan	Email: [EMAIL_ADDRESS]
+ID 002	Name:Dinuka Madushan Pathirana	Email:[EMAIL_ADDRESS]
+ID 003	Name:Hiruna Chathuranga	Email:[EMAIL_ADDRESS]
+ID 004	Name:Yasintha Madushani De Alwis	Email:[EMAIL_ADDRESS]
