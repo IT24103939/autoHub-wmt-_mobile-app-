@@ -40,6 +40,7 @@ import { OrderHistoryScreen } from "../screens/payments/OrderHistoryScreen";
 import { OrderTrackingScreen } from "../screens/payments/OrderTrackingScreen";
 import { SellerProfileScreen } from "../screens/spareParts/SellerProfileScreen";
 import { PartsSearchScreen } from "../screens/spareParts/PartsSearchScreen";
+import { EmailSetupScreen } from "../screens/auth/EmailSetupScreen";
 import { useAuth } from "../hooks/useAuth";
 import { useAppTheme } from "../hooks/useAppTheme";
 import { Role } from "../types/models";
@@ -677,8 +678,6 @@ function AdminTabNavigator() {
     </Tab.Navigator>
   );
 }
-
-import { EmailSetupScreen } from "../screens/auth/EmailSetupScreen";
 
 function RoleNavigator({ role }: { role: Role }) {
   if (role === "GARAGE_OWNER") {
